@@ -30,10 +30,5 @@
     "@types/react-dom": "^19",
     "postcss": "^8.5",
     "typescript": "^5"
-  },
-  "pnpm": {
-    "overrides": {
-      "install-command": "pnpm install --only=production"
-    }
   }
 }
