@@ -13,12 +13,24 @@ export const safeSupabase = supabase || {
     select: () => ({
       eq: () => ({
         order: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+        single: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }), // Added single for fetching a single row
       }),
     }),
     insert: () => ({
       select: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
     }),
+    update: () => ({
+      eq: () => ({
+        select: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+      }),
+    }),
   }),
+  storage: {
+    from: () => ({
+      upload: () => Promise.resolve({ data: null, error: new Error("Supabase Storage not configured") }),
+      getPublicUrl: () => ({ data: { publicUrl: "/placeholder.svg" } }),
+    }),
+  },
 }
 
 // Database schema for pets table
@@ -79,6 +91,26 @@ export interface Database {
           photo_url?: string | null
           created_at?: string
           status?: "active" | "found" | "archived"
+        }
+      }
+      app_settings: {
+        Row: {
+          id: string
+          background_image_url: string | null
+          background_darkening_percentage: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          background_image_url?: string | null
+          background_darkening_percentage?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          background_image_url?: string | null
+          background_darkening_percentage?: number
+          updated_at?: string
         }
       }
     }
