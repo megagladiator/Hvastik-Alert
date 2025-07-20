@@ -21,6 +21,7 @@ import {
 import Link from "next/link"
 import { safeSupabase as supabase } from "@/lib/supabase" // Use safeSupabase
 import PetMap from "@/components/pet-map"
+import dynamic from "next/dynamic"
 
 interface Pet {
   id: string
@@ -52,6 +53,8 @@ interface Testimonial {
   daysToFind: number
 }
 
+const AuthPage = dynamic(() => import("./auth/page"), { ssr: false })
+
 export default function HomePage() {
   const [pets, setPets] = useState<Pet[]>([])
   const [filteredPets, setFilteredPets] = useState<Pet[]>([])
@@ -64,6 +67,8 @@ export default function HomePage() {
   // State for background image URL and darkening percentage
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string>("/placeholder.svg?height=1080&width=1920")
   const [backgroundDarkeningPercentage, setBackgroundDarkeningPercentage] = useState<number>(50)
+  const [showAuth, setShowAuth] = useState(false)
+  const [user, setUser] = useState<any>(null)
 
   const testimonials: Testimonial[] = [
     {
@@ -274,6 +279,11 @@ export default function HomePage() {
     )
   }
 
+  const handleAuthChange = (newUser: any) => {
+    setUser(newUser)
+    setShowAuth(false)
+  }
+
   return (
     <div className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: `url(${backgroundImageUrl})` }}>
       {/* Overlay for better readability */}
@@ -283,8 +293,8 @@ export default function HomePage() {
       >
         {/* Header */}
         <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
+          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div className="flex items-center space-x-2">
               <Link href="/" className="flex items-center space-x-2">
                 <Heart className="h-8 w-8 text-orange-500" />
                 <div>
@@ -304,21 +314,6 @@ export default function HomePage() {
                   Нашли питомца
                 </Link>
               </nav>
-
-              <div className="flex items-center space-x-4">
-                <Link href="/admin">
-                  <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
-                    <Settings className="h-4 w-4" />
-                    <span className="sr-only">Админ</span>
-                  </Button>
-                </Link>
-                <Link href="/add">
-                  <Button className="bg-orange-500 hover:bg-orange-600 shadow-lg">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Добавить
-                  </Button>
-                </Link>
-              </div>
             </div>
           </div>
         </header>
@@ -767,6 +762,7 @@ export default function HomePage() {
           </Link>
         </div>
       </div>
+      {showAuth && <AuthPage onAuthChange={handleAuthChange} />}
     </div>
   )
 }
