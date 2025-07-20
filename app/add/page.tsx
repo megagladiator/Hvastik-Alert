@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ArrowLeft, Upload, MapPin, Heart } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { safeSupabase as supabase } from "@/lib/supabase"
+import { useRouter, useSearchParams } from "next/navigation"
+import { safeSupabase as supabase, supabase as realSupabase } from "@/lib/supabase"
 
 export default function AddPetPage() {
   const router = useRouter()
@@ -33,6 +33,54 @@ export default function AddPetPage() {
     reward: "",
     photo_url: "",
   })
+  const [userId, setUserId] = useState<string | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  const searchParams = useSearchParams()
+  const editId = searchParams.get("id")
+
+  useEffect(() => {
+    async function fetchUser() {
+      // Используем только realSupabase для auth, safeSupabase не содержит auth
+      if (realSupabase && 'auth' in realSupabase && typeof realSupabase.auth.getUser === 'function') {
+        const { data } = await realSupabase.auth.getUser()
+        setUserId(data.user?.id || null)
+        setUserEmail(data.user?.email || null)
+      } else {
+        setUserId(null)
+        setUserEmail(null)
+      }
+    }
+    fetchUser()
+  }, [])
+
+  // Загрузка объявления для редактирования
+  useEffect(() => {
+    const fetchPetForEdit = async () => {
+      if (editId && supabase) {
+        const { data, error } = await supabase.from("pets").select("*").eq("id", editId).single()
+        if (data) {
+          setFormData({
+            type: data.type || "lost",
+            animal_type: data.animal_type || "",
+            breed: data.breed || "",
+            name: data.name || "",
+            description: data.description || "",
+            color: data.color || "",
+            location: data.location || "",
+            latitude: data.latitude || 44.8951,
+            longitude: data.longitude || 37.3142,
+            contact_phone: data.contact_phone || "",
+            contact_name: data.contact_name || "",
+            reward: data.reward?.toString() || "",
+            photo_url: data.photo_url || "",
+          })
+        }
+      }
+    }
+    fetchPetForEdit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,27 +92,48 @@ export default function AddPetPage() {
         reward: formData.reward ? Number.parseInt(formData.reward) : null,
         status: "active",
         created_at: new Date().toISOString(),
+        user_id: userId || null,
       }
 
-      // Try to insert into Supabase if available
+      // Try to insert or update in Supabase if available
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        const { data, error } = await supabase.from("pets").insert([petData]).select()
-
+        let data, error
+        if (editId) {
+          // update
+          ({ data, error } = await supabase.from("pets").update(petData).eq("id", editId).select())
+        } else {
+          // insert
+          ({ data, error } = await supabase.from("pets").insert([petData]).select())
+        }
         if (error) {
           console.log("Supabase error, using demo mode:", error)
-          alert("Объявление добавлено в демо-режиме! Для полной функциональности настройте Supabase.")
+          alert(editId ? "Ошибка при обновлении объявления!" : "Объявление добавлено в демо-режиме! Для полной функциональности настройте Supabase.")
         } else {
-          alert("Объявление успешно добавлено!")
+          if (editId) {
+            alert("Объявление успешно обновлено!")
+          } else if (userId) {
+            alert("Объявление успешно добавлено и привязано к вашему аккаунту!")
+          } else {
+            alert("Объявление успешно добавлено анонимно!")
+          }
         }
       } else {
-        alert("Объявление добавлено в демо-режиме! Для полной функциональности настройте Supabase.")
+        alert(editId ? "Ошибка при обновлении объявления!" : "Объявление добавлено в демо-режиме! Для полной функциональности настройте Supabase.")
       }
 
-      router.push("/")
+      if (userId) {
+        router.push("/cabinet")
+      } else {
+        router.push("/")
+      }
     } catch (error) {
       console.error("Error adding pet:", error)
       alert("Объявление добавлено в демо-режиме!")
-      router.push("/")
+      if (userId) {
+        router.push("/cabinet")
+      } else {
+        router.push("/")
+      }
     } finally {
       setLoading(false)
     }
@@ -116,10 +185,17 @@ export default function AddPetPage() {
       <div className="container mx-auto px-4 py-6 max-w-2xl">
         <Card>
           <CardHeader>
-            <CardTitle>Новое объявление</CardTitle>
+            <CardTitle>{editId ? "Редактировать объявление" : "Новое объявление"}</CardTitle>
             <p className="text-sm text-gray-600">
               Заполните информацию о питомце, чтобы другие пользователи могли помочь
             </p>
+            <div className="mt-2 text-xs text-gray-500">
+              {userEmail ? (
+                <>Вы добавляете объявление как: <span className="font-semibold">{userEmail}</span></>
+              ) : (
+                <>Вы добавляете объявление <span className="font-semibold">анонимно</span></>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -302,7 +378,7 @@ export default function AddPetPage() {
                   </Button>
                 </Link>
                 <Button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600" disabled={loading}>
-                  {loading ? "Публикуем..." : "Опубликовать объявление"}
+                  {editId ? (loading ? "Сохраняем..." : "Сохранить изменения") : (loading ? "Публикуем..." : "Опубликовать объявление")}
                 </Button>
               </div>
             </form>

@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
-import { safeSupabase as supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
+import Link from "next/link"
 
 export default function CabinetPage() {
   const [user, setUser] = useState<any>(null)
@@ -20,17 +20,17 @@ export default function CabinetPage() {
   useEffect(() => {
     async function fetchUserAndAds() {
       if (!supabase) return
-      const { data } = await supabase.auth.getUser()
-      if (!data.user) {
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      if (!userData?.user) {
         router.push("/")
         return
       }
-      setUser(data.user)
-      // Получаем объявления пользователя
-      const { data: pets, error } = await supabase
+      setUser(userData.user)
+      // Получаем объявления пользователя (только с user_id текущего пользователя)
+      const { data: pets, error: petsError } = await supabase
         .from("pets")
         .select("*")
-        .eq("user_id", data.user.id)
+        .eq("user_id", userData.user.id)
       setAds(pets || [])
       setLoading(false)
     }
@@ -51,23 +51,20 @@ export default function CabinetPage() {
     setAds(ads.map(ad => ad.id === id ? { ...ad, status: "archived" } : ad))
   }
 
+  const handleUnarchive = async (id: string) => {
+    if (!supabase) return
+    await supabase.from("pets").update({ status: "active" }).eq("id", id)
+    setAds(ads.map(ad => ad.id === id ? { ...ad, status: "active" } : ad))
+  }
+
   const handleEdit = (id: string) => {
     router.push(`/add?id=${id}`)
   }
-
-  const handleDelete = async (id: string) => {
-    if (!supabase) return
-    await supabase.from("pets").delete().eq("id", id)
-    setAds(ads.filter(ad => ad.id !== id))
-  }
-
-  const isAdmin = user?.email === 'agentgl007sobak.gmail.com'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50">
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Личный кабинет</h1>
           <span className="text-orange-600 font-medium">{user?.email}</span>
         </div>
       </header>
@@ -75,6 +72,9 @@ export default function CabinetPage() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">Мои объявления</h2>
           <div className="flex items-center gap-4">
+            <Link href="/add">
+              <Button className="bg-orange-500 hover:bg-orange-600 text-white">Добавить объявление</Button>
+            </Link>
             <Select value={sort} onValueChange={handleSort}>
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -113,8 +113,10 @@ export default function CabinetPage() {
                 </div>
                 <div className="flex flex-col gap-2 mt-4 md:mt-0">
                   <Button variant="outline" onClick={() => handleEdit(ad.id)} disabled={ad.status === "archived"}>Редактировать</Button>
-                  {isAdmin && <Button variant="destructive" onClick={() => handleArchive(ad.id)} disabled={ad.status === "archived"}>В архив</Button>}
-                  {isAdmin && <Button variant="destructive" onClick={() => handleDelete(ad.id)}>Удалить</Button>}
+                  {ad.status === "archived"
+                    ? <Button variant="default" onClick={() => handleUnarchive(ad.id)}>Вернуть из архива</Button>
+                    : <Button variant="destructive" onClick={() => handleArchive(ad.id)}>В архив</Button>
+                  }
                 </div>
               </Card>
             ))}
@@ -124,4 +126,4 @@ export default function CabinetPage() {
       </div>
     </div>
   )
-}
+} 
