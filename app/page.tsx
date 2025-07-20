@@ -762,7 +762,7 @@ export default function HomePage() {
           </Link>
         </div>
       </div>
-      {showAuth && <AuthPage onAuthChange={handleAuthChange} />}
+      <AuthPage open={showAuth} onOpenChange={setShowAuth} onAuthChange={handleAuthChange} />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useDebounce } from "@/hooks/use-debounce"
 import { useRouter } from "next/navigation"
 
-export default function AuthPage({ onAuthChange }: { onAuthChange?: (user: any) => void }) {
+export default function AuthPage({ open = true, onOpenChange = () => {}, onAuthChange }: { open?: boolean, onOpenChange?: (open: boolean) => void, onAuthChange?: (user: any) => void }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [user, setUser] = useState<any>(null)
@@ -18,12 +18,14 @@ export default function AuthPage({ onAuthChange }: { onAuthChange?: (user: any) 
   const [loading, setLoading] = useState(false)
   const [justRegistered, setJustRegistered] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState("")
-  const [showDialog, setShowDialog] = useState(true)
   const [showReset, setShowReset] = useState(false)
   const [emailChecked, setEmailChecked] = useState(false)
   const [emailExists, setEmailExists] = useState<boolean | null>(null)
+  const [repeatPassword, setRepeatPassword] = useState("");
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
   const debouncedEmail = useDebounce(email, 500)
   const router = useRouter()
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   // Показываем заглушку, если Supabase не сконфигурирован
   if (!supabase) {
@@ -42,10 +44,10 @@ export default function AuthPage({ onAuthChange }: { onAuthChange?: (user: any) 
   }
 
   useEffect(() => {
-    if (!supabase) return
+    if (!supabase) return;
     const getSession = async () => {
-      const { data } = await supabase!.auth.getUser()
-      if (data.user) setUser(data.user)
+      const { data } = await supabase.auth.getUser();
+      if (data && data.user) setUser(data.user)
       else setUser(null)
     }
     getSession()
@@ -79,16 +81,31 @@ export default function AuthPage({ onAuthChange }: { onAuthChange?: (user: any) 
     checkEmail()
   }, [debouncedEmail])
 
+  useEffect(() => {
+    if (open && passwordRef.current) {
+      passwordRef.current.focus();
+    }
+  }, [open]);
+
   // Удаляю useEffect, который автоматически меняет режим
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
+    setPasswordMismatch(false)
+    if (!supabase) {
+      setError("Supabase не сконфигурирован")
+      setLoading(false)
+      return;
+    }
     try {
-      if (!supabase) throw new Error("Supabase не сконфигурирован")
       if (mode === "register") {
-        if (!supabase) throw new Error("Supabase не сконфигурирован")
+        if (password !== repeatPassword) {
+          setPasswordMismatch(true)
+          setLoading(false)
+          return
+        }
         const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) {
           alert('Supabase error: ' + error.message)
@@ -149,10 +166,7 @@ export default function AuthPage({ onAuthChange }: { onAuthChange?: (user: any) 
           type="email"
           placeholder="E-mail"
           value={email}
-          onChange={e => {
-            setEmail(e.target.value)
-            setError("")
-          }}
+          onChange={e => setEmail(e.target.value)}
           required
           autoComplete="username"
           name="email"
@@ -167,7 +181,23 @@ export default function AuthPage({ onAuthChange }: { onAuthChange?: (user: any) 
           autoComplete="current-password"
           name="password"
           id="password"
+          ref={passwordRef}
         />
+        {mode === "register" && (
+          <Input
+            type="password"
+            placeholder="Повторите пароль"
+            value={repeatPassword}
+            onChange={e => setRepeatPassword(e.target.value)}
+            required
+            autoComplete="new-password"
+            name="repeat-password"
+            id="repeat-password"
+          />
+        )}
+        {passwordMismatch && (
+          <div className="text-red-500 text-sm">вы ввели неверный пароль</div>
+        )}
         {error && <div className="text-red-500 text-sm">{error}</div>}
         <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white" disabled={loading}>
           {mode === "register" ? "Зарегистрироваться" : "Войти"}
@@ -247,7 +277,7 @@ export default function AuthPage({ onAuthChange }: { onAuthChange?: (user: any) 
 
   // Показываем модальное окно
   return (
-    <Dialog open={showDialog} onOpenChange={setShowDialog}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md w-full">
         <DialogHeader>
           <DialogTitle>{justRegistered ? "Подтвердите e-mail" : user ? "Личный кабинет" : showReset ? "Восстановление пароля" : mode === "register" ? "Регистрация" : "Вход"}</DialogTitle>
