@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 
-export default function AuthPage() {
+export default function AuthTestPage() {
   const [mode, setMode] = useState<"login" | "register">("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
