@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/supabase"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { useDebounce } from "@/hooks/use-debounce"
 import { useRouter } from "next/navigation"
 
 export default function AuthPage({ open = true, onOpenChange = () => {}, onAuthChange }: { open?: boolean, onOpenChange?: (open: boolean) => void, onAuthChange?: (user: any) => void }) {
@@ -23,7 +22,7 @@ export default function AuthPage({ open = true, onOpenChange = () => {}, onAuthC
   const [emailExists, setEmailExists] = useState<boolean | null>(null)
   const [repeatPassword, setRepeatPassword] = useState("");
   const [passwordMismatch, setPasswordMismatch] = useState(false);
-  const debouncedEmail = useDebounce(email, 500)
+  // const debouncedEmail = useDebounce(email, 500)
   const router = useRouter()
   const passwordRef = useRef<HTMLInputElement>(null);
 
@@ -53,33 +52,31 @@ export default function AuthPage({ open = true, onOpenChange = () => {}, onAuthC
     getSession()
   }, [])
 
-  useEffect(() => {
-    if (!supabase || !debouncedEmail) return
-    setEmailChecked(false)
-    setEmailExists(null)
-    // Проверяем, есть ли пользователь с таким e-mail
-    const checkEmail = async () => {
-      // Supabase не позволяет напрямую искать пользователей, если нет расширенных прав,
-      // поэтому эмулируем проверку через попытку signIn (без пароля)
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email: debouncedEmail, password: "invalid" })
-        if (error && error.message.toLowerCase().includes("invalid login credentials")) {
-          setEmailExists(true)
-        } else if (error && error.message.toLowerCase().includes("user not found")) {
-          setEmailExists(false)
-        } else if (data && data.user) {
-          setEmailExists(true)
-        } else {
-          setEmailExists(false)
-        }
-      } catch {
-        setEmailExists(null)
-      } finally {
-        setEmailChecked(true)
-      }
-    }
-    checkEmail()
-  }, [debouncedEmail])
+  // useEffect(() => {
+  //   if (!supabase || !email) return
+  //   setEmailChecked(false)
+  //   setEmailExists(null)
+  //   // Проверяем, есть ли пользователь с таким e-mail
+  //   const checkEmail = async () => {
+  //     try {
+  //       const { data, error } = await supabase.auth.signInWithPassword({ email, password: "invalid" })
+  //       if (error && error.message.toLowerCase().includes("invalid login credentials")) {
+  //         setEmailExists(true)
+  //       } else if (error && error.message.toLowerCase().includes("user not found")) {
+  //         setEmailExists(false)
+  //       } else if (data && data.user) {
+  //         setEmailExists(true)
+  //       } else {
+  //         setEmailExists(false)
+  //       }
+  //     } catch {
+  //       setEmailExists(null)
+  //     } finally {
+  //       setEmailChecked(true)
+  //     }
+  //   }
+  //   checkEmail()
+  // }, [email])
 
   useEffect(() => {
     if (open && passwordRef.current) {
@@ -182,6 +179,7 @@ export default function AuthPage({ open = true, onOpenChange = () => {}, onAuthC
           name="password"
           id="password"
           ref={passwordRef}
+          autoFocus={mode === "login"}
         />
         {mode === "register" && (
           <Input
