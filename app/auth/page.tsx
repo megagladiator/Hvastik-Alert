@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useRef } from "react"
+import { supabase } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "register">("login")
@@ -8,18 +10,74 @@ export default function AuthPage() {
   const [password, setPassword] = useState("")
   const [repeatPassword, setRepeatPassword] = useState("")
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [info, setInfo] = useState("")
   const emailInputRef = useRef<HTMLInputElement>(null)
   const passwordInputRef = useRef<HTMLInputElement>(null)
   const repeatPasswordInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
+    setInfo("")
+    if (!supabase) {
+      setError("Supabase не настроен")
+      setLoading(false)
+      return
+    }
     if (mode === "register" && password !== repeatPassword) {
       setError("Пароли не совпадают")
       return
     }
-    alert("OK! (никакой реальной авторизации)")
+    setLoading(true)
+    if (mode === "login") {
+      // Вход
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
+      if (loginError) {
+        setError(loginError.message)
+      } else {
+        setInfo("Вход выполнен!")
+        router.push("/cabinet")
+      }
+    } else {
+      // Регистрация
+      const { error: regError } = await supabase.auth.signUp({ email, password })
+      if (regError) {
+        // Проверяем код ошибки или текст
+        if (
+          regError.message.toLowerCase().includes("already registered") ||
+          regError.message.toLowerCase().includes("user already exists") ||
+          regError.message.toLowerCase().includes("email already")
+        ) {
+          setError("Пользователь с таким e-mail уже существует")
+        } else {
+          setError(regError.message)
+        }
+      } else {
+        setInfo("Проверьте почту для подтверждения регистрации! Если письмо не пришло, проверьте папку 'Спам' или попробуйте другой e-mail. Если проблема повторяется — обратитесь к администратору.")
+        setMode("login")
+      }
+    }
+    setLoading(false)
+  }
+
+  async function handleResetPassword() {
+    setError("")
+    setInfo("")
+    if (!supabase) {
+      setError("Supabase не настроен")
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email)
+    if (resetError) {
+      setError(resetError.message)
+    } else {
+      setInfo("Письмо для сброса пароля отправлено!")
+    }
+    setLoading(false)
   }
 
   return (
@@ -37,6 +95,7 @@ export default function AuthPage() {
           id="email"
           className="w-full border rounded px-3 py-2"
           ref={emailInputRef}
+          disabled={loading}
         />
         <input
           type="password"
@@ -49,6 +108,7 @@ export default function AuthPage() {
           id="password"
           className="w-full border rounded px-3 py-2"
           ref={passwordInputRef}
+          disabled={loading}
         />
         {mode === "register" && (
           <input
@@ -62,12 +122,21 @@ export default function AuthPage() {
             id="repeat-password"
             className="w-full border rounded px-3 py-2"
             ref={repeatPasswordInputRef}
+            disabled={loading}
           />
         )}
         {error && <div className="text-red-500 text-sm">{error}</div>}
-        <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded">
-          {mode === "register" ? "Зарегистрироваться" : "Войти"}
+        {info && <div className="text-green-600 text-sm">{info}</div>}
+        <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded" disabled={loading}>
+          {loading ? "Загрузка..." : mode === "register" ? "Зарегистрироваться" : "Войти"}
         </button>
+        {mode === "login" && (
+          <div className="text-right">
+            <button type="button" className="text-blue-600 underline text-sm" onClick={handleResetPassword} disabled={loading || !email}>
+              Забыли пароль?
+            </button>
+          </div>
+        )}
         <div className="mt-4 text-center">
           {mode === "register" ? (
             <span>Уже есть аккаунт? <button className="text-blue-600 underline" type="button" onClick={() => setMode("login")}>Войти</button></span>
