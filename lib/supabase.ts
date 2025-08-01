@@ -93,6 +93,116 @@ export interface Database {
           status?: "active" | "found" | "archived"
         }
       }
+      chats: {
+        Row: {
+          id: string
+          pet_id: string
+          user_id: string
+          owner_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          pet_id: string
+          user_id: string
+          owner_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          pet_id?: string
+          user_id?: string
+          owner_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      messages: {
+        Row: {
+          id: string
+          chat_id: string
+          sender_id: string
+          sender_type: "user" | "owner"
+          text: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          chat_id: string
+          sender_id: string
+          sender_type: "user" | "owner"
+          text: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          chat_id?: string
+          sender_id?: string
+          sender_type?: "user" | "owner"
+          text?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      app_settings: {
+        Row: {
+          id: string
+          background_image_url: string | null
+          background_darkening_percentage: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          background_image_url?: string | null
+          background_darkening_percentage?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          background_image_url?: string | null
+          background_darkening_percentage?: number
+          updated_at?: string
+        }
+      }
+    }
+  }
+}
+
+        }
+      }
+      messages: {
+        Row: {
+          id: string
+          chat_id: string
+          sender_id: string
+          sender_type: "user" | "owner"
+          text: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          chat_id: string
+          sender_id: string
+          sender_type: "user" | "owner"
+          text: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          chat_id?: string
+          sender_id?: string
+          sender_type?: "user" | "owner"
+          text?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
       app_settings: {
         Row: {
           id: string

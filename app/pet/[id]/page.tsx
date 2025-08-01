@@ -4,10 +4,11 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, MapPin, Calendar, Phone, MessageCircle, Heart, Share2 } from "lucide-react"
+import { ArrowLeft, MapPin, Calendar, Heart, Share2 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { safeSupabase as supabase } from "@/lib/supabase"
+import { ContactInfo } from "@/components/contact-info"
 
 interface Pet {
   id: string
@@ -22,6 +23,7 @@ interface Pet {
   longitude: number
   contact_phone: string
   contact_name: string
+  user_id?: string
   reward?: number
   photo_url?: string
   created_at: string
@@ -32,10 +34,23 @@ export default function PetDetailPage() {
   const params = useParams()
   const [pet, setPet] = useState<Pet | null>(null)
   const [loading, setLoading] = useState(true)
+  const [currentUser, setCurrentUser] = useState<any>(null)
 
   useEffect(() => {
     fetchPet()
+    fetchCurrentUser()
   }, [params.id])
+
+  const fetchCurrentUser = async () => {
+    try {
+      if (supabase && 'auth' in supabase) {
+        const { data: { user } } = await supabase.auth.getUser()
+        setCurrentUser(user)
+      }
+    } catch (error) {
+      console.error("Error fetching current user:", error)
+    }
+  }
 
   const fetchPet = async () => {
     try {
@@ -271,37 +286,15 @@ export default function PetDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Contact */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Контактная информация</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="font-medium text-gray-900">{pet.contact_name}</p>
-                  <div className="flex items-center mt-1 text-gray-600">
-                    <Phone className="h-4 w-4 mr-2" />
-                    <a href={`tel:${pet.contact_phone}`} className="hover:text-orange-500">
-                      {pet.contact_phone}
-                    </a>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Link href={`/chat/${pet.id}`} className="block">
-                    <Button className="w-full bg-orange-500 hover:bg-orange-600">
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Написать сообщение
-                    </Button>
-                  </Link>
-                  <a href={`tel:${pet.contact_phone}`} className="block">
-                    <Button variant="outline" className="w-full bg-transparent">
-                      <Phone className="h-4 w-4 mr-2" />
-                      Позвонить
-                    </Button>
-                  </a>
-                </div>
-              </CardContent>
-            </Card>
+            <ContactInfo
+              contact_name={pet.contact_name}
+              contact_phone={pet.contact_phone}
+              petId={pet.id}
+              showPhone={false}
+              isOwner={currentUser?.id === pet.user_id}
+              isAdmin={false}
+              currentUserId={currentUser?.id}
+            />
 
             {/* Tips */}
             <Card>

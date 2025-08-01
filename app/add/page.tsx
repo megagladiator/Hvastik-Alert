@@ -124,7 +124,7 @@ export default function AddPetPage() {
       if (userId) {
         router.push("/cabinet")
       } else {
-        router.push("/")
+      router.push("/")
       }
     } catch (error) {
       console.error("Error adding pet:", error)
@@ -132,7 +132,7 @@ export default function AddPetPage() {
       if (userId) {
         router.push("/cabinet")
       } else {
-        router.push("/")
+      router.push("/")
       }
     } finally {
       setLoading(false)

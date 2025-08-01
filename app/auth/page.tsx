@@ -3,6 +3,7 @@
 import { useState, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "register">("login")
@@ -35,22 +36,41 @@ export default function AuthPage() {
       // Вход
       const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
       if (loginError) {
-        setError(loginError.message)
+        const errorMessage = loginError.message.toLowerCase()
+        if (
+          errorMessage.includes("invalid login credentials") ||
+          errorMessage.includes("invalid email or password") ||
+          errorMessage.includes("invalid credentials")
+        ) {
+          setError("Неверный email или пароль")
+        } else if (errorMessage.includes("email not confirmed")) {
+          setError("Email не подтвержден. Проверьте почту и подтвердите регистрацию.")
+        } else {
+          setError(loginError.message)
+        }
       } else {
         setInfo("Вход выполнен!")
         router.push("/cabinet")
       }
     } else {
-      // Регистрация
+      // Регистрация - упрощенная логика
       const { error: regError } = await supabase.auth.signUp({ email, password })
       if (regError) {
-        // Проверяем код ошибки или текст
+        // Проверяем код ошибки или текст - расширенная проверка
+        const errorMessage = regError.message.toLowerCase()
         if (
-          regError.message.toLowerCase().includes("already registered") ||
-          regError.message.toLowerCase().includes("user already exists") ||
-          regError.message.toLowerCase().includes("email already")
+          errorMessage.includes("already registered") ||
+          errorMessage.includes("user already exists") ||
+          errorMessage.includes("email already") ||
+          errorMessage.includes("already exists") ||
+          errorMessage.includes("duplicate key") ||
+          errorMessage.includes("unique constraint") ||
+          errorMessage.includes("email is already") ||
+          errorMessage.includes("user with this email") ||
+          regError.message.includes("User already registered") ||
+          regError.message.includes("Email already registered")
         ) {
-          setError("Пользователь с таким e-mail уже существует")
+          setError("Пользователь с таким e-mail уже существует. Попробуйте войти или сбросить пароль.")
         } else {
           setError(regError.message)
         }
@@ -62,22 +82,90 @@ export default function AuthPage() {
     setLoading(false)
   }
 
+  async function handleResendConfirmation() {
+    setError("")
+    setInfo("")
+    
+    if (!email.trim()) {
+      setError("Введите email для повторной отправки")
+      return
+    }
+    
+    if (!supabase) {
+      setError("Supabase не настроен")
+      return
+    }
+    
+    setLoading(true)
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: email
+      })
+      
+      if (resendError) {
+        console.error("Resend confirmation error:", resendError)
+        if (resendError.message.includes("User not found")) {
+          setError("Пользователь с таким email не найден")
+        } else if (resendError.message.includes("Too many requests")) {
+          setError("Слишком много запросов. Попробуйте позже")
+        } else {
+          setError(`Ошибка при отправке письма: ${resendError.message}`)
+        }
+      } else {
+        setInfo("Письмо подтверждения отправлено! Проверьте почту и папку 'Спам'")
+      }
+    } catch (error) {
+      console.error("Unexpected error during resend:", error)
+      setError("Произошла неожиданная ошибка. Попробуйте позже")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function handleResetPassword() {
     setError("")
     setInfo("")
-    if (!supabase) {
-      setError("Supabase не настроен")
-      setLoading(false)
+    
+    // Проверяем, что email введен
+    if (!email.trim()) {
+      setError("Введите email для сброса пароля")
       return
     }
-    setLoading(true)
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email)
-    if (resetError) {
-      setError(resetError.message)
-    } else {
-      setInfo("Письмо для сброса пароля отправлено!")
+    
+    if (!supabase) {
+      setError("Supabase не настроен")
+      return
     }
-    setLoading(false)
+    
+    setLoading(true)
+    try {
+      // Получаем текущий URL для создания ссылки сброса
+      const currentUrl = window.location.origin
+      const resetUrl = `${currentUrl}/auth/reset-password`
+      
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: resetUrl
+      })
+      
+      if (resetError) {
+        console.error("Reset password error:", resetError)
+        if (resetError.message.includes("User not found")) {
+          setError("Пользователь с таким email не найден")
+        } else if (resetError.message.includes("Too many requests")) {
+          setError("Слишком много запросов. Попробуйте позже")
+        } else {
+          setError(`Ошибка при отправке письма: ${resetError.message}`)
+        }
+      } else {
+        setInfo("Письмо для сброса пароля отправлено! Проверьте почту и папку 'Спам'")
+      }
+    } catch (error) {
+      console.error("Unexpected error during password reset:", error)
+      setError("Произошла неожиданная ошибка. Попробуйте позже")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -125,8 +213,44 @@ export default function AuthPage() {
             disabled={loading}
           />
         )}
-        {error && <div className="text-red-500 text-sm">{error}</div>}
-        {info && <div className="text-green-600 text-sm">{info}</div>}
+        {error && (
+          <div className="text-red-500 text-sm p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="font-medium mb-1">Ошибка:</div>
+            <div>{error}</div>
+            {error.includes("Invalid login credentials") && (
+              <div className="mt-2 text-xs">
+                💡 Попробуйте:
+                <ul className="list-disc list-inside mt-1">
+                  <li>Проверить правильность email и пароля</li>
+                  <li>Зарегистрироваться, если аккаунта нет</li>
+                  <li>Сбросить пароль, если забыли</li>
+                </ul>
+              </div>
+            )}
+            {error.includes("уже существует") && (
+              <div className="mt-2 text-xs">
+                💡 Попробуйте:
+                <ul className="list-disc list-inside mt-1">
+                  <li>Войти в существующий аккаунт</li>
+                  <li>Сбросить пароль, если забыли</li>
+                  <li>Использовать другой email</li>
+                </ul>
+              </div>
+            )}
+            {error.includes("не подтвержден") && (
+              <div className="mt-2 text-xs">
+                💡 Попробуйте:
+                <ul className="list-disc list-inside mt-1">
+                  <li>Проверить почту и подтвердить регистрацию</li>
+                  <li>Проверить папку "Спам"</li>
+                  <li>Запросить повторную отправку письма</li>
+                  <li>Использовать другой email</li>
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+        {info && <div className="text-green-600 text-sm p-3 bg-green-50 border border-green-200 rounded-lg">{info}</div>}
         <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded" disabled={loading}>
           {loading ? "Загрузка..." : mode === "register" ? "Зарегистрироваться" : "Войти"}
         </button>
