@@ -307,6 +307,9 @@ export default function HomePage() {
                 <Link href="/search" className="text-gray-600 hover:text-gray-900 transition-colors">
                   Поиск
                 </Link>
+                <Link href="/chats" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  Мои чаты
+                </Link>
                 <Link href="/add?type=lost" className="text-gray-600 hover:text-gray-900 transition-colors">
                   Потерялся питомец
                 </Link>
@@ -766,3 +769,6 @@ export default function HomePage() {
     </div>
   )
 }
+  )
+}
+

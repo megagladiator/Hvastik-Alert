@@ -7,16 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Send, Phone, Heart } from "lucide-react"
+import { ArrowLeft, Send, Heart, Shield, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-
-interface Message {
-  id: string
-  sender: "user" | "owner"
-  text: string
-  timestamp: string
-}
+import { supabase } from "@/lib/supabase"
+import { useChat } from "@/hooks/use-chat"
 
 interface Pet {
   id: string
@@ -30,43 +25,81 @@ interface Pet {
 
 export default function ChatPage() {
   const params = useParams()
-  const [messages, setMessages] = useState<Message[]>([])
-  const [newMessage, setNewMessage] = useState("")
   const [pet, setPet] = useState<Pet | null>(null)
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [newMessage, setNewMessage] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    // Demo data
-    setPet({
-      id: params.id as string,
-      type: "lost",
-      name: "Рекс",
-      breed: "Лабрадор",
-      contact_name: "Анна",
-      contact_phone: "+7 (918) 123-45-67",
-      photo_url: "/placeholder.svg?height=50&width=50",
-    })
+  // Используем хук для чата
+  const { messages, loading: chatLoading, sending, error, sendMessage } = useChat({
+    petId: params.id as string,
+    currentUserId: user?.id,
+  })
 
-    setMessages([
-      {
-        id: "1",
-        sender: "owner",
-        text: "Здравствуйте! Спасибо, что откликнулись на объявление о Рексе.",
-        timestamp: "2024-01-15T10:00:00Z",
-      },
-      {
-        id: "2",
-        sender: "user",
-        text: "Привет! Я видел собаку, похожую на вашего Рекса возле парка. Можете описать особые приметы?",
-        timestamp: "2024-01-15T10:05:00Z",
-      },
-      {
-        id: "3",
-        sender: "owner",
-        text: "У него есть небольшой шрам на левом ухе и он носит красный ошейник с медальоном в форме кости.",
-        timestamp: "2024-01-15T10:07:00Z",
-      },
-    ])
+  useEffect(() => {
+    // Получаем информацию о пользователе
+    const getUser = async () => {
+      if (!supabase) return
+      
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+      
+      if (!user) {
+        // Если пользователь не авторизован, показываем демо данные
+        setPet({
+          id: params.id as string,
+          type: "lost",
+          name: "Рекс",
+          breed: "Лабрадор",
+          contact_name: "Анна",
+          contact_phone: "+7 (918) 123-45-67",
+          photo_url: "/placeholder.svg?height=50&width=50",
+        })
+        setLoading(false)
+        return
+      }
+
+      // Получаем информацию о питомце
+      try {
+        const { data: petData, error: petError } = await supabase
+          .from("pets")
+          .select("*")
+          .eq("id", params.id)
+          .single()
+
+        if (petError) {
+          console.error("Error fetching pet:", petError)
+          // Fallback к демо данным
+          setPet({
+            id: params.id as string,
+            type: "lost",
+            name: "Рекс",
+            breed: "Лабрадор",
+            contact_name: "Анна",
+            contact_phone: "+7 (918) 123-45-67",
+            photo_url: "/placeholder.svg?height=50&width=50",
+          })
+        } else {
+          setPet(petData)
+        }
+      } catch (error) {
+        console.error("Error:", error)
+        setPet({
+          id: params.id as string,
+          type: "lost",
+          name: "Рекс",
+          breed: "Лабрадор",
+          contact_name: "Анна",
+          contact_phone: "+7 (918) 123-45-67",
+          photo_url: "/placeholder.svg?height=50&width=50",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    getUser()
   }, [params.id])
 
   useEffect(() => {
@@ -77,30 +110,12 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim()) return
+    if (!newMessage.trim() || !user) return
 
-    const message: Message = {
-      id: Date.now().toString(),
-      sender: "user",
-      text: newMessage,
-      timestamp: new Date().toISOString(),
-    }
-
-    setMessages((prev) => [...prev, message])
+    await sendMessage(newMessage)
     setNewMessage("")
-
-    // Simulate response
-    setTimeout(() => {
-      const response: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: "owner",
-        text: "Спасибо за информацию! Можете прислать фото или встретиться?",
-        timestamp: new Date().toISOString(),
-      }
-      setMessages((prev) => [...prev, response])
-    }, 1000)
   }
 
   const formatTime = (timestamp: string) => {
@@ -110,12 +125,31 @@ export default function ChatPage() {
     })
   }
 
-  if (!pet) {
+  if (loading || !pet) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Загружаем чат...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Требуется авторизация</h2>
+          <p className="text-gray-600 mb-4">
+            Для отправки сообщений необходимо войти в систему
+          </p>
+          <Link href="/auth">
+            <Button className="bg-orange-500 hover:bg-orange-600">
+              Войти в систему
+            </Button>
+          </Link>
         </div>
       </div>
     )
@@ -154,12 +188,10 @@ export default function ChatPage() {
                 </Badge>
               </div>
             </div>
-            <a href={`tel:${pet.contact_phone}`}>
-              <Button variant="outline" size="sm">
-                <Phone className="h-4 w-4 mr-2" />
-                Позвонить
-              </Button>
-            </a>
+            <div className="text-xs text-gray-500 flex items-center">
+              <Shield className="h-3 w-3 mr-1" />
+              Номер телефона скрыт для безопасности
+            </div>
           </div>
         </div>
       </header>
@@ -178,34 +210,66 @@ export default function ChatPage() {
           <CardContent className="flex-1 flex flex-col p-0">
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-96">
-              {messages.map((message) => (
-                <div key={message.id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.sender === "user" ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-900"
-                    }`}
-                  >
-                    <p className="text-sm">{message.text}</p>
-                    <p className={`text-xs mt-1 ${message.sender === "user" ? "text-orange-100" : "text-gray-500"}`}>
-                      {formatTime(message.timestamp)}
-                    </p>
+              {chatLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+                  <span className="ml-2 text-gray-600">Загружаем сообщения...</span>
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-center text-gray-500">
+                    <Heart className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                    <p>Начните разговор первым!</p>
+                    <p className="text-sm">Напишите сообщение владельцу питомца</p>
                   </div>
                 </div>
-              ))}
+                             ) : (
+                 messages.map((message: any) => {
+                   const isCurrentUser = message.sender_id === user?.id
+                   return (
+                     <div key={message.id} className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}>
+                       <div
+                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                           isCurrentUser ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-900"
+                         }`}
+                       >
+                         <p className="text-sm">{message.text}</p>
+                         <p className={`text-xs mt-1 ${isCurrentUser ? "text-orange-100" : "text-gray-500"}`}>
+                           {formatTime(message.created_at)}
+                         </p>
+                       </div>
+                     </div>
+                   )
+                 })
+               )}
               <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input */}
             <div className="border-t p-4">
+              {error && (
+                <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Напишите сообщение..."
                   className="flex-1"
+                  disabled={sending}
                 />
-                <Button type="submit" className="bg-orange-500 hover:bg-orange-600">
-                  <Send className="h-4 w-4" />
+                <Button 
+                  type="submit" 
+                  className="bg-orange-500 hover:bg-orange-600"
+                  disabled={sending || !newMessage.trim()}
+                >
+                  {sending ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </form>
             </div>
