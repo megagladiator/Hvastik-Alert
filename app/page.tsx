@@ -54,7 +54,6 @@ interface Testimonial {
   daysToFind: number
 }
 
-const AuthPage = dynamic(() => import("./auth/page"), { ssr: false })
 
 export default function HomePage() {
   const [pets, setPets] = useState<Pet[]>([])
@@ -68,8 +67,6 @@ export default function HomePage() {
   // State for background image URL and darkening percentage
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string>("/placeholder.svg?height=1080&width=1920")
   const [backgroundDarkeningPercentage, setBackgroundDarkeningPercentage] = useState<number>(50)
-  const [showAuth, setShowAuth] = useState(false)
-  const [user, setUser] = useState<any>(null)
 
   const testimonials: Testimonial[] = [
     {
@@ -291,10 +288,6 @@ export default function HomePage() {
     )
   }
 
-  const handleAuthChange = (newUser: any) => {
-    setUser(newUser)
-    setShowAuth(false)
-  }
 
   return (
     <div className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: `url(${backgroundImageUrl})` }}>
@@ -765,6 +758,9 @@ export default function HomePage() {
               <p>&copy; 2024 Хвостик Alert. Все права защищены.</p>
             </div>
           </div>
+          
+          {/* Информация о версии в футере */}
+          <VersionInfo />
         </footer>
 
         {/* Плавающая CTA кнопка */}
@@ -777,11 +773,6 @@ export default function HomePage() {
           </Link>
         </div>
       </div>
-      
-      {/* Информация о версии */}
-      <VersionInfo />
-      
-      <AuthPage open={showAuth} onOpenChange={setShowAuth} onAuthChange={handleAuthChange} />
     </div>
   )
 }
