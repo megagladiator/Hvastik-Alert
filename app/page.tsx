@@ -21,6 +21,7 @@ import {
 import Link from "next/link"
 import { safeSupabase as supabase } from "@/lib/supabase" // Use safeSupabase
 import PetMap from "@/components/pet-map"
+import { VersionInfo } from "@/components/version-info"
 import dynamic from "next/dynamic"
 
 interface Pet {
@@ -776,6 +777,10 @@ export default function HomePage() {
           </Link>
         </div>
       </div>
+      
+      {/* Информация о версии */}
+      <VersionInfo />
+      
       <AuthPage open={showAuth} onOpenChange={setShowAuth} onAuthChange={handleAuthChange} />
     </div>
   )
