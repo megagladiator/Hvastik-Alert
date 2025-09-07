@@ -1,31 +1,28 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import versionData from '../version.json'
 
 interface VersionInfo {
   version: string
   buildDate: string
   buildTime: string
   description: string
+  features: string[]
+  changelog: {
+    [key: string]: {
+      date: string
+      changes: string[]
+    }
+  }
 }
 
 export function VersionInfo() {
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
 
   useEffect(() => {
-    // Загружаем информацию о версии
-    fetch('/version.json')
-      .then(response => response.json())
-      .then(data => setVersionInfo(data))
-      .catch(() => {
-        // Fallback данные если файл не найден
-        setVersionInfo({
-          version: "1.0.1",
-          buildDate: "2024-12-07",
-          buildTime: "15:30:00",
-          description: "Hvastik-Alert - Платформа для поиска потерянных и найденных домашних животных"
-        })
-      })
+    // Используем прямой импорт данных о версии
+    setVersionInfo(versionData as VersionInfo)
   }, [])
 
   if (!versionInfo) {
