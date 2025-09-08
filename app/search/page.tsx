@@ -48,18 +48,32 @@ export default function SearchPage() {
 
   const fetchPets = async () => {
     try {
-      // Only try Supabase if environment variables are properly configured
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        const { data, error } = await supabase
+      // Проверяем, настроен ли Supabase
+      if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL && 
+          !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")) {
+        
+        // Добавляем таймаут для запроса к Supabase
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Supabase timeout')), 5000)
+        )
+        
+        const supabasePromise = supabase
           .from("pets")
           .select("*")
           .eq("status", "active")
           .order("created_at", { ascending: false })
 
-        if (error) throw error
-        if (data && data.length > 0) {
-          setPets(data)
-          return
+        try {
+          const { data, error } = await Promise.race([supabasePromise, timeoutPromise]) as any
+
+          if (error) {
+            console.warn("Supabase error, using demo data:", error.message)
+          } else if (data && data.length > 0) {
+            setPets(data)
+            return
+          }
+        } catch (timeoutError) {
+          console.warn("Supabase timeout, using demo data")
         }
       }
 
@@ -157,7 +171,7 @@ export default function SearchPage() {
       ]
       setPets(demoData)
     } catch (error) {
-      console.error("Error fetching pets:", error)
+      console.warn("Unexpected error fetching pets, using demo data:", error)
       // Even if there's an error, show demo data
       const demoData: Pet[] = [
         {

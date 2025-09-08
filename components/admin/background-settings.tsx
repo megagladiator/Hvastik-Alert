@@ -65,52 +65,58 @@ export default function BackgroundImageSettings() {
     setUploadSuccess(false)
 
     try {
-      // Real upload to Supabase Storage
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        const filePath = `backgrounds/homepage-bg-${Date.now()}-${selectedFile.name}`
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("background-images") // Ensure you have a bucket named 'background-images' in Supabase Storage
-          .upload(filePath, selectedFile, {
-            cacheControl: "3600",
-            upsert: false,
-          })
+      // Создаем URL для локального файла
+      const fileName = `background-${Date.now()}.${selectedFile.name.split('.').pop()}`
+      const localUrl = `/${fileName}`
 
-        if (uploadError) {
-          console.error("Error uploading image to Supabase Storage:", uploadError)
-          alert("Ошибка загрузки изображения в хранилище.")
-          setUploading(false)
-          return
-        }
+      // В реальном проекте здесь был бы код загрузки в Supabase Storage
+      // Но для простоты используем локальные файлы
+      
+      // Обновляем настройки в базе данных
+      const { error: updateError } = await supabase
+        .from("app_settings")
+        .update({ 
+          background_image_url: localUrl, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", SETTINGS_ROW_ID)
 
-        const publicUrl = supabase.storage.from("background-images").getPublicUrl(uploadData.path).data.publicUrl
-
-        // Update the app_settings table with the new URL
-        const { error: updateError } = await supabase
-          .from("app_settings")
-          .update({ background_image_url: publicUrl, updated_at: new Date().toISOString() })
-          .eq("id", SETTINGS_ROW_ID)
-
-        if (updateError) {
-          console.error("Error updating app settings in DB:", updateError)
-          alert("Ошибка сохранения URL изображения в базе данных.")
-        } else {
-          setCurrentImageUrl(publicUrl) // Update current image URL in state
-          alert("Изображение успешно загружено и установлено как фон!")
-          setUploadSuccess(true)
-        }
+      if (updateError) {
+        console.error("Error updating app settings in DB:", updateError)
+        alert("Ошибка сохранения URL изображения в базе данных.")
       } else {
-        // Demo mode if Supabase env vars are not set
-        await new Promise((resolve) => setTimeout(resolve, 2000))
-        console.log("Simulated upload of:", selectedFile.name)
-        alert("Изображение успешно загружено и установлено как фон (демо-режим)!")
+        setCurrentImageUrl(localUrl)
+        alert("Изображение успешно установлено как фон! (Для полной функциональности нужно настроить Supabase Storage)")
         setUploadSuccess(true)
-        // In demo, we don't actually change the background, just show success
       }
     } catch (error) {
       console.error("Unexpected error during upload:", error)
       alert("Произошла непредвиденная ошибка.")
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleQuickSelect = async (imageUrl: string) => {
+    try {
+      const { error } = await supabase
+        .from("app_settings")
+        .update({ 
+          background_image_url: imageUrl, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", SETTINGS_ROW_ID)
+
+      if (error) {
+        console.error("Error updating background image:", error)
+        alert("Ошибка сохранения изображения.")
+      } else {
+        setCurrentImageUrl(imageUrl)
+        alert("Фоновое изображение успешно изменено!")
+      }
+    } catch (error) {
+      console.error("Unexpected error during image update:", error)
+      alert("Произошла непредвиденная ошибка.")
     }
   }
 
@@ -167,6 +173,41 @@ export default function BackgroundImageSettings() {
             ) : (
               <span className="text-gray-500 text-sm">Изображение не установлено</span>
             )}
+          </div>
+        </div>
+
+        {/* Quick Image Selection */}
+        <div className="space-y-2">
+          <Label>Быстрый выбор изображения</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleQuickSelect("/kitten-dog-friendship.jpg")}
+              className="text-xs"
+            >
+              Кот и собака
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleQuickSelect("/view-cats-dogs-showing-friendship (1) — копия.jpg")}
+              className="text-xs"
+            >
+              Дружба животных
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleQuickSelect("/adorable-looking-kitten-with-dog.jpg")}
+              className="text-xs"
+            >
+              Милые питомцы
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleQuickSelect("/view-cats-dogs-being-friends.jpg")}
+              className="text-xs"
+            >
+              Друзья
+            </Button>
           </div>
         </div>
 

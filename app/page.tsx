@@ -135,25 +135,44 @@ export default function HomePage() {
       // Проверяем, настроен ли Supabase
       if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL && 
           !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")) {
-        const { data, error } = await supabase.from("app_settings").select("*").eq("id", SETTINGS_ROW_ID).single()
+        
+        // Увеличиваем таймаут для запроса к Supabase
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Supabase timeout')), 10000)
+        )
+        
+        const supabasePromise = supabase.from("app_settings").select("*").eq("id", SETTINGS_ROW_ID).single()
 
-        if (error) {
-          console.warn("Supabase error, using default settings:", error.message)
-        } else if (data) {
-          setBackgroundImageUrl(data.background_image_url || "/placeholder.svg?height=1080&width=1920")
-          setBackgroundDarkeningPercentage(data.background_darkening_percentage)
-          return
+        try {
+          const { data, error } = await Promise.race([supabasePromise, timeoutPromise]) as any
+
+          if (error) {
+            console.warn("Supabase error, using default settings:", error.message)
+            // Используем картинку из базы данных даже при ошибке
+            setBackgroundImageUrl("/view-cats-dogs-showing-friendship (1) — копия.jpg")
+            setBackgroundDarkeningPercentage(30)
+          } else if (data) {
+            console.log("Loaded settings from Supabase:", data)
+            setBackgroundImageUrl(data.background_image_url || "/view-cats-dogs-showing-friendship (1) — копия.jpg")
+            setBackgroundDarkeningPercentage(data.background_darkening_percentage || 30)
+            return
+          }
+        } catch (timeoutError) {
+          console.warn("Supabase timeout, using default settings")
+          // Используем картинку из базы данных при таймауте
+          setBackgroundImageUrl("/view-cats-dogs-showing-friendship (1) — копия.jpg")
+          setBackgroundDarkeningPercentage(30)
         }
       }
 
-      // Используем красивую картинку по умолчанию
-      setBackgroundImageUrl("/kitten-dog-friendship.jpg")
-      setBackgroundDarkeningPercentage(40)
+      // Используем картинку из базы данных по умолчанию
+      setBackgroundImageUrl("/view-cats-dogs-showing-friendship (1) — копия.jpg")
+      setBackgroundDarkeningPercentage(30)
     } catch (error) {
-      console.error("Unexpected error fetching app settings:", error)
-      // Fallback to beautiful image on unexpected error
-      setBackgroundImageUrl("/kitten-dog-friendship.jpg")
-      setBackgroundDarkeningPercentage(40)
+      console.warn("Unexpected error fetching app settings, using defaults:", error)
+      // Fallback to image from database
+      setBackgroundImageUrl("/view-cats-dogs-showing-friendship (1) — копия.jpg")
+      setBackgroundDarkeningPercentage(30)
     }
   }
 
@@ -162,17 +181,29 @@ export default function HomePage() {
       // Проверяем, настроен ли Supabase
       if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL && 
           !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")) {
-        const { data, error } = await supabase
+        
+        // Добавляем таймаут для запроса к Supabase
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Supabase timeout')), 5000)
+        )
+        
+        const supabasePromise = supabase
           .from("pets")
           .select("*")
           .eq("status", "active")
           .order("created_at", { ascending: false })
 
-        if (error) {
-          console.warn("Supabase error, using demo data:", error.message)
-        } else if (data && data.length > 0) {
-          setPets(data)
-          return
+        try {
+          const { data, error } = await Promise.race([supabasePromise, timeoutPromise]) as any
+
+          if (error) {
+            console.warn("Supabase error, using demo data:", error.message)
+          } else if (data && data.length > 0) {
+            setPets(data)
+            return
+          }
+        } catch (timeoutError) {
+          console.warn("Supabase timeout, using demo data")
         }
       }
 

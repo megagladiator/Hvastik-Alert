@@ -1,4 +1,4 @@
-"\"use client"
+"use client"
 
 import { useEffect, useRef } from "react"
 import { MapPin } from "lucide-react"
@@ -47,8 +47,27 @@ export function PetMap({ pets }: PetMapProps) {
           document.head.appendChild(link)
         }
 
-        // Загружаем Leaflet JS
-        const L = (await import("leaflet")).default
+        // Загружаем Leaflet JS через CDN вместо динамического импорта
+        if (typeof window !== "undefined" && !(window as any).L) {
+          const script = document.createElement("script")
+          script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          script.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          script.crossOrigin = ""
+          document.head.appendChild(script)
+          
+          // Ждем загрузки скрипта
+          await new Promise((resolve, reject) => {
+            script.onload = resolve
+            script.onerror = reject
+          })
+        }
+        
+        const L = (window as any).L
+        
+        if (!L) {
+          console.warn("Leaflet not loaded, skipping map initialization")
+          return
+        }
 
         // Исправляем иконки маркеров
         delete (L.Icon.Default.prototype as any)._getIconUrl

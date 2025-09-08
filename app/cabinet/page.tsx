@@ -61,11 +61,23 @@ export default function CabinetPage() {
     router.push(`/add?id=${id}`)
   }
 
+  const isAdmin = user?.email === 'agentgl007@gmail.com'
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50">
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <span className="text-orange-600 font-medium">{user?.email}</span>
+          <h1 className="text-2xl font-bold text-gray-900">Личный кабинет</h1>
+          <div className="flex items-center gap-4">
+            {isAdmin && (
+              <Link href="/admin">
+                <Button variant="outline" className="border-orange-500 text-orange-500 hover:bg-orange-50">
+                  Админ панель
+                </Button>
+              </Link>
+            )}
+            <span className="text-orange-600 font-medium">{user?.email}</span>
+          </div>
         </div>
       </header>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
