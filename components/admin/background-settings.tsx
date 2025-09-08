@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Slider } from "@/components/ui/slider" // Assuming Slider is available from shadcn/ui
+// import { Slider } from "@/components/ui/slider" // Removed due to React 19 compatibility issues
 import { Upload, ImageIcon, CheckCircle, Loader2 } from "lucide-react"
 import { safeSupabase as supabase } from "@/lib/supabase"
 
@@ -257,16 +257,17 @@ export default function BackgroundImageSettings() {
           )}
         </Button>
 
-        {/* Darkening Percentage Slider */}
+        {/* Darkening Percentage Input */}
         <div className="space-y-4 pt-4 border-t">
-          <Label htmlFor="darkening-slider">Процент затемнения фона: {darkeningPercentage[0]}%</Label>
-          <Slider
-            id="darkening-slider"
+          <Label htmlFor="darkening-input">Процент затемнения фона: {darkeningPercentage[0]}%</Label>
+          <Input
+            id="darkening-input"
+            type="range"
             min={0}
             max={100}
             step={1}
-            value={darkeningPercentage}
-            onValueChange={handleDarkeningChange}
+            value={darkeningPercentage[0]}
+            onChange={(e) => handleDarkeningChange([parseInt(e.target.value)])}
             className="w-full"
           />
           <p className="text-sm text-gray-500">
