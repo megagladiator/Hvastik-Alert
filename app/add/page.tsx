@@ -10,13 +10,16 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { ArrowLeft, Upload, MapPin, Heart } from "lucide-react"
+import { Upload, MapPin, Heart } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { safeSupabase as supabase, supabase as realSupabase } from "@/lib/supabase"
+import { useSession } from "next-auth/react"
+import { safeSupabase as supabase } from "@/lib/supabase"
+import { v5 as uuidv5 } from 'uuid'
 
 export default function AddPetPage() {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     type: "lost",
@@ -33,26 +36,19 @@ export default function AddPetPage() {
     reward: "",
     photo_url: "",
   })
-  const [userId, setUserId] = useState<string | null>(null)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string>("")
 
   const searchParams = useSearchParams()
   const editId = searchParams.get("id")
 
-  useEffect(() => {
-    async function fetchUser() {
-      // Используем только realSupabase для auth, safeSupabase не содержит auth
-      if (realSupabase && 'auth' in realSupabase && typeof realSupabase.auth.getUser === 'function') {
-        const { data } = await realSupabase.auth.getUser()
-        setUserId(data.user?.id || null)
-        setUserEmail(data.user?.email || null)
-      } else {
-        setUserId(null)
-        setUserEmail(null)
-      }
-    }
-    fetchUser()
-  }, [])
+  // Функция для генерации UUID из NextAuth.js ID
+  const generateUserId = (nextAuthId: string | undefined): string | null => {
+    if (!nextAuthId) return null
+    // Используем namespace UUID для генерации детерминированного UUID
+    const namespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
+    return uuidv5(nextAuthId, namespace)
+  }
 
   // Загрузка объявления для редактирования
   useEffect(() => {
@@ -75,6 +71,18 @@ export default function AddPetPage() {
             reward: data.reward?.toString() || "",
             photo_url: data.photo_url || "",
           })
+          if (data.photo_url) {
+            // Проверяем, является ли URL валидным (не локальным blob URL)
+            if (data.photo_url.startsWith('http') || data.photo_url.startsWith('data:')) {
+              setPreviewUrl(data.photo_url)
+              console.log('Загружено изображение из базы данных:', data.photo_url)
+            } else {
+              // Если это не валидный URL, очищаем предпросмотр
+              setPreviewUrl("")
+            }
+          } else {
+            setPreviewUrl("")
+          }
         }
       }
     }
@@ -92,47 +100,53 @@ export default function AddPetPage() {
         reward: formData.reward ? Number.parseInt(formData.reward) : null,
         status: "active",
         created_at: new Date().toISOString(),
-        user_id: userId || null,
+        user_id: generateUserId((session?.user as any)?.id), // Генерируем UUID из NextAuth.js ID
       }
 
-      // Try to insert or update in Supabase if available
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        let data, error
+      // Используем API route для сохранения
+      try {
+        const response = await fetch('/api/pets', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            petData,
+            userId: (session?.user as any)?.id,
+            editId: editId || null
+          }),
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Ошибка при сохранении объявления')
+        }
+
         if (editId) {
-          // update
-          ({ data, error } = await supabase.from("pets").update(petData).eq("id", editId).select())
+          alert("Объявление успешно обновлено!")
+        } else if (session?.user) {
+          alert("Объявление успешно добавлено и привязано к вашему аккаунту!")
         } else {
-          // insert
-          ({ data, error } = await supabase.from("pets").insert([petData]).select())
+          alert("Объявление успешно добавлено анонимно!")
         }
-        if (error) {
-          console.log("Supabase error, using demo mode:", error)
-          alert(editId ? "Ошибка при обновлении объявления!" : "Объявление добавлено в демо-режиме! Для полной функциональности настройте Supabase.")
-        } else {
-          if (editId) {
-            alert("Объявление успешно обновлено!")
-          } else if (userId) {
-            alert("Объявление успешно добавлено и привязано к вашему аккаунту!")
-          } else {
-            alert("Объявление успешно добавлено анонимно!")
-          }
-        }
-      } else {
-        alert(editId ? "Ошибка при обновлении объявления!" : "Объявление добавлено в демо-режиме! Для полной функциональности настройте Supabase.")
+      } catch (apiError: any) {
+        console.error("API error:", apiError)
+        alert(`Ошибка при сохранении объявления: ${apiError.message}`)
       }
 
-      if (userId) {
+      if (session?.user) {
         router.push("/cabinet")
       } else {
-      router.push("/")
+        router.push("/")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding pet:", error)
-      alert("Объявление добавлено в демо-режиме!")
-      if (userId) {
+      alert(`Произошла ошибка: ${error.message}`)
+      if (session?.user) {
         router.push("/cabinet")
       } else {
-      router.push("/")
+        router.push("/")
       }
     } finally {
       setLoading(false)
@@ -141,6 +155,121 @@ export default function AddPetPage() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+      
+      // Создаем локальный предпросмотр
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+      
+      // Загружаем файл в Supabase Storage
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        
+        const result = await response.json()
+        
+        if (response.ok) {
+          // Сохраняем URL из Supabase Storage
+          setFormData((prev) => ({ ...prev, photo_url: result.url }))
+          console.log('✅ Файл успешно загружен в Supabase:', result.url)
+        } else {
+          console.error('❌ Ошибка загрузки файла:', result.error)
+          console.log('📤 Ответ сервера:', result)
+          // Fallback: используем локальный URL
+          setFormData((prev) => ({ ...prev, photo_url: url }))
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки файла:', error)
+        // Fallback: используем локальный URL
+        setFormData((prev) => ({ ...prev, photo_url: url }))
+      }
+    }
+  }
+
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const file = event.dataTransfer.files[0]
+    if (file && file.type.startsWith('image/')) {
+      setSelectedFile(file)
+      
+      // Создаем локальный предпросмотр
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+      
+      // Загружаем файл в Supabase Storage
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        
+        const result = await response.json()
+        
+        if (response.ok) {
+          // Сохраняем URL из Supabase Storage
+          setFormData((prev) => ({ ...prev, photo_url: result.url }))
+          console.log('✅ Файл успешно загружен в Supabase:', result.url)
+        } else {
+          console.error('❌ Ошибка загрузки файла:', result.error)
+          console.log('📤 Ответ сервера:', result)
+          // Fallback: используем локальный URL
+          setFormData((prev) => ({ ...prev, photo_url: url }))
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки файла:', error)
+        // Fallback: используем локальный URL
+        setFormData((prev) => ({ ...prev, photo_url: url }))
+      }
+    }
+  }
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+  }
+
+  const openFileDialog = () => {
+    const fileInput = document.getElementById('file-input') as HTMLInputElement
+    fileInput?.click()
+  }
+
+  const clearPreview = async () => {
+    // Если есть текущее изображение из Supabase, удаляем его
+    const currentUrl = formData.photo_url
+    if (currentUrl && currentUrl.includes('supabase')) {
+      try {
+        // Извлекаем имя файла из URL
+        const fileName = currentUrl.split('/').pop()
+        if (fileName) {
+          await fetch('/api/upload/delete', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ fileName }),
+          })
+          console.log('Старый файл удален из Supabase Storage')
+        }
+      } catch (error) {
+        console.error('Ошибка при удалении файла:', error)
+      }
+    }
+    
+    setPreviewUrl("")
+    setSelectedFile(null)
+    setFormData(prev => ({ ...prev, photo_url: "" }))
   }
 
   const handleLocationSelect = () => {
@@ -167,17 +296,9 @@ export default function AddPetPage() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center space-x-4">
-            <Link href="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Назад
-              </Button>
-            </Link>
-            <div className="flex items-center space-x-2">
-              <Heart className="h-6 w-6 text-orange-500" />
-              <h1 className="text-xl font-bold text-gray-900">Подать объявление</h1>
-            </div>
+          <div className="flex items-center space-x-2">
+            <Heart className="h-6 w-6 text-orange-500" />
+            <h1 className="text-xl font-bold text-gray-900">Подать объявление</h1>
           </div>
         </div>
       </header>
@@ -190,8 +311,8 @@ export default function AddPetPage() {
               Заполните информацию о питомце, чтобы другие пользователи могли помочь
             </p>
             <div className="mt-2 text-xs text-gray-500">
-              {userEmail ? (
-                <>Вы добавляете объявление как: <span className="font-semibold">{userEmail}</span></>
+              {session?.user?.email ? (
+                <>Вы добавляете объявление как: <span className="font-semibold">{session.user.email}</span></>
               ) : (
                 <>Вы добавляете объявление <span className="font-semibold">анонимно</span></>
               )}
@@ -356,16 +477,73 @@ export default function AddPetPage() {
               {/* Фото */}
               <div className="space-y-2">
                 <Label htmlFor="photo_url">Фото питомца</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600 mb-2">Перетащите фото сюда или нажмите для выбора</p>
+                
+                {/* Скрытый input для выбора файла */}
+                <input
+                  id="file-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                
+                <div 
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors"
+                  onClick={openFileDialog}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                >
+                  {previewUrl ? (
+                    <div className="space-y-2">
+                      <img 
+                        src={previewUrl} 
+                        alt="Предпросмотр" 
+                        className="max-h-48 mx-auto rounded-lg object-cover"
+                        onError={() => {
+                          // Если изображение не загружается, очищаем предпросмотр
+                          setPreviewUrl("")
+                          setFormData(prev => ({ ...prev, photo_url: "" }))
+                        }}
+                      />
+                      <div className="flex items-center justify-center gap-2">
+                        <p className="text-sm text-green-600">Фото выбрано! Нажмите для изменения</p>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            clearPreview()
+                          }}
+                          className="text-xs"
+                        >
+                          Удалить
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 mb-2">Перетащите фото сюда или нажмите для выбора</p>
+                    </>
+                  )}
+                </div>
+                
+                <div className="text-center">
+                  <p className="text-xs text-gray-500 mb-2">Или вставьте ссылку на фото:</p>
                   <Input
                     id="photo_url"
                     type="url"
                     value={formData.photo_url}
-                    onChange={(e) => handleInputChange("photo_url", e.target.value)}
-                    placeholder="Или вставьте ссылку на фото"
-                    className="mt-2"
+                    onChange={(e) => {
+                      handleInputChange("photo_url", e.target.value)
+                      if (e.target.value) {
+                        setPreviewUrl(e.target.value)
+                        setSelectedFile(null)
+                      }
+                    }}
+                    placeholder="https://example.com/photo.jpg"
+                    className="text-sm"
                   />
                 </div>
               </div>

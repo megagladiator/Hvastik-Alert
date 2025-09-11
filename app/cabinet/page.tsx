@@ -6,36 +6,50 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
+import { v5 as uuidv5 } from 'uuid'
 
 export default function CabinetPage() {
-  const [user, setUser] = useState<any>(null)
+  const { data: session, status } = useSession()
   const [ads, setAds] = useState<any[]>([])
   const [sort, setSort] = useState<string>("newest")
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>("active")
   const router = useRouter()
 
+  // Функция для генерации UUID из NextAuth.js ID
+  const generateUserId = (nextAuthId: string | undefined): string | null => {
+    if (!nextAuthId) return null
+    // Используем namespace UUID для генерации детерминированного UUID
+    const namespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
+    return uuidv5(nextAuthId, namespace)
+  }
+
   useEffect(() => {
     async function fetchUserAndAds() {
-      if (!supabase) return
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-      if (!userData?.user) {
-        router.push("/")
+      // Проверяем аутентификацию через NextAuth
+      if (status === "loading") return
+      
+      if (!session?.user) {
+        router.push("/auth")
         return
       }
-      setUser(userData.user)
-      // Получаем объявления пользователя (только с user_id текущего пользователя)
-      const { data: pets, error: petsError } = await supabase
-        .from("pets")
-        .select("*")
-        .eq("user_id", userData.user.id)
-      setAds(pets || [])
+
+      // Получаем объявления пользователя из Supabase
+      if (supabase) {
+        const generatedUserId = generateUserId(session.user.id)
+        const { data: pets, error: petsError } = await supabase
+          .from("pets")
+          .select("*")
+          .eq("user_id", generatedUserId)
+        setAds(pets || [])
+      }
       setLoading(false)
     }
     fetchUserAndAds()
-  }, [router])
+  }, [session, status, router])
 
   const handleSort = (value: string) => {
     setSort(value)
@@ -46,22 +60,64 @@ export default function CabinetPage() {
   }
 
   const handleArchive = async (id: string) => {
-    if (!supabase) return
-    await supabase.from("pets").update({ status: "archived" }).eq("id", id)
-    setAds(ads.map(ad => ad.id === id ? { ...ad, status: "archived" } : ad))
+    try {
+      const response = await fetch('/api/pets/archive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          petId: id,
+          userId: session?.user?.id,
+          status: "archived"
+        }),
+      })
+
+      if (response.ok) {
+        setAds(ads.map(ad => ad.id === id ? { ...ad, status: "archived" } : ad))
+      } else {
+        const error = await response.json()
+        console.error('Ошибка при архивировании:', error)
+        alert('Ошибка при архивировании объявления')
+      }
+    } catch (error) {
+      console.error('Ошибка при архивировании:', error)
+      alert('Ошибка при архивировании объявления')
+    }
   }
 
   const handleUnarchive = async (id: string) => {
-    if (!supabase) return
-    await supabase.from("pets").update({ status: "active" }).eq("id", id)
-    setAds(ads.map(ad => ad.id === id ? { ...ad, status: "active" } : ad))
+    try {
+      const response = await fetch('/api/pets/archive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          petId: id,
+          userId: session?.user?.id,
+          status: "active"
+        }),
+      })
+
+      if (response.ok) {
+        setAds(ads.map(ad => ad.id === id ? { ...ad, status: "active" } : ad))
+      } else {
+        const error = await response.json()
+        console.error('Ошибка при восстановлении:', error)
+        alert('Ошибка при восстановлении объявления')
+      }
+    } catch (error) {
+      console.error('Ошибка при восстановлении:', error)
+      alert('Ошибка при восстановлении объявления')
+    }
   }
 
   const handleEdit = (id: string) => {
     router.push(`/add?id=${id}`)
   }
 
-  const isAdmin = user?.email === 'agentgl007@gmail.com'
+  const isAdmin = session?.user?.email === 'agentgl007@gmail.com'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50">
@@ -76,7 +132,7 @@ export default function CabinetPage() {
                 </Button>
               </Link>
             )}
-            <span className="text-orange-600 font-medium">{user?.email}</span>
+            <span className="text-orange-600 font-medium">{session?.user?.email}</span>
           </div>
         </div>
       </header>
