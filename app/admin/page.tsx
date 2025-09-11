@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import BackgroundImageSettings from "@/components/admin/background-settings"
-import { Settings, Users, Database, ImageIcon } from "lucide-react"
+import UserList from "@/components/admin/user-list"
+import { Settings, Users, Database, ImageIcon, Home } from "lucide-react"
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null)
@@ -87,7 +88,17 @@ export default function AdminPage() {
             <Settings className="h-8 w-8 text-orange-500" />
             <h1 className="text-2xl font-bold text-gray-900">Админ панель</h1>
           </div>
-          <span className="text-orange-600 font-medium">{user?.email}</span>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              onClick={() => router.push("/")}
+              className="flex items-center gap-2"
+            >
+              <Home className="h-4 w-4" />
+              На главную
+            </Button>
+            <span className="text-orange-600 font-medium">{user?.email}</span>
+          </div>
         </div>
       </header>
 
@@ -138,18 +149,8 @@ export default function AdminPage() {
         )}
 
         {activeTab === "users" && (
-          <div className="max-w-4xl mx-auto">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-orange-500" />
-                  Управление пользователями
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Функция управления пользователями будет добавлена в следующих версиях.</p>
-              </CardContent>
-            </Card>
+          <div className="max-w-7xl mx-auto">
+            <UserList />
           </div>
         )}
 

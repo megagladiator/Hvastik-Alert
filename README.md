@@ -29,6 +29,31 @@ Continue building your app on:
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
 
+## 🆕 Recent Updates (Last Week)
+
+### Major Improvements
+- ✅ **Fixed user ads display** - Ads now properly show in user cabinet
+- ✅ **Fixed editing duplication** - Editing ads no longer creates duplicates
+- ✅ **Fixed archiving status** - Archive status now persists after page refresh
+- ✅ **Full Supabase Storage integration** - Images now stored permanently in cloud
+- ✅ **Enhanced file upload system** - Drag & drop, preview, and management
+- ✅ **Fixed logo duplication** - Single unified logo across all pages
+- ✅ **Improved navigation** - Better UX with consistent header design
+
+### New Features
+- 🖼️ **Image upload system** - Full integration with Supabase Storage
+- 👤 **User cabinet improvements** - Better ad management and display
+- 🗂️ **Archive functionality** - Proper status management for ads
+- 🔧 **API enhancements** - New endpoints for file management and archiving
+- 🎨 **Unified logo component** - Beautiful animated logo with heart icon
+- 🧭 **Global navigation** - Sticky header with consistent branding
+
+### Technical Improvements
+- 🔒 **Enhanced security** - Better user ownership validation
+- 🚀 **Performance optimizations** - Improved file handling and storage
+- 🐛 **Bug fixes** - Resolved all major user experience issues
+- 📚 **Updated documentation** - Complete changelog and technical docs
+
 ## Supabase Keep-Alive System
 
 The application includes an automatic Supabase keep-alive system to prevent the database from going into sleep mode.

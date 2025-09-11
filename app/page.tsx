@@ -19,6 +19,7 @@ import {
   Settings,
 } from "lucide-react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import { safeSupabase as supabase } from "@/lib/supabase" // Use safeSupabase
 import PetMap from "@/components/pet-map"
 import { VersionInfo } from "@/components/version-info"
@@ -67,6 +68,8 @@ export default function HomePage() {
   // State for background image URL and darkening percentage
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string>("/placeholder.svg?height=1080&width=1920")
   const [backgroundDarkeningPercentage, setBackgroundDarkeningPercentage] = useState<number>(50)
+  // NextAuth.js session
+  const { data: session, status } = useSession()
 
   const testimonials: Testimonial[] = [
     {
@@ -129,6 +132,7 @@ export default function HomePage() {
   useEffect(() => {
     filterPets()
   }, [pets, searchQuery, typeFilter, animalFilter])
+
 
   const fetchAppSettings = async () => {
     try {
@@ -327,35 +331,64 @@ export default function HomePage() {
         className="min-h-screen backdrop-blur-sm"
         style={{ backgroundColor: `rgba(0, 0, 0, ${backgroundDarkeningPercentage / 100})` }}
       >
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <Link href="/" className="flex items-center space-x-2">
-                <Heart className="h-8 w-8 text-orange-500" />
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Хвостик Alert</h1>
-                  <p className="text-xs text-gray-500">Анапа - поиск питомцев</p>
-                </div>
-              </Link>
-
-              <nav className="hidden md:flex items-center space-x-8">
-                <Link href="/search" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Поиск
+        {/* Navigation Bar */}
+        <nav className="bg-white/90 backdrop-blur-sm shadow-sm border-b">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex justify-center">
+              <div className="flex items-center space-x-4">
+                <Link 
+                  href="/search" 
+                  className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
+                >
+                  <div className="flex items-center gap-2">
+                    <Search className="h-4 w-4" />
+                    Поиск
+                  </div>
                 </Link>
-                <Link href="/chats" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Мои чаты
+                {session?.user && (
+                  <>
+                    <Link 
+                      href="/cabinet" 
+                      className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        Личный кабинет
+                      </div>
+                    </Link>
+                    <Link 
+                      href="/chats" 
+                      className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
+                    >
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4" />
+                        Мои чаты
+                      </div>
+                    </Link>
+                  </>
+                )}
+                <Link 
+                  href="/add?type=lost" 
+                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-white hover:from-orange-600 hover:to-orange-700 font-medium"
+                >
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Потерялся питомец
+                  </div>
                 </Link>
-                <Link href="/add?type=lost" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Потерялся питомец
+                <Link 
+                  href="/add?type=found" 
+                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-white hover:from-green-600 hover:to-green-700 font-medium"
+                >
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Нашли питомца
+                  </div>
                 </Link>
-                <Link href="/add?type=found" className="text-gray-600 hover:text-gray-900 transition-colors">
-                  Нашли питомца
-                </Link>
-              </nav>
+              </div>
             </div>
           </div>
-        </header>
+        </nav>
 
         {/* Hero Section - Улучшенный */}
         <section className="container mx-auto px-4 py-16 text-center">
