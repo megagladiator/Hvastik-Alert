@@ -7,53 +7,29 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
+import { useSession } from "next-auth/react"
 import BackgroundImageSettings from "@/components/admin/background-settings"
 import UserList from "@/components/admin/user-list"
 import { Settings, Users, Database, ImageIcon, Home } from "lucide-react"
 
 export default function AdminPage() {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: session, status } = useSession()
   const [activeTab, setActiveTab] = useState<string>("settings")
   const router = useRouter()
 
   useEffect(() => {
-    async function fetchUser() {
-      try {
-        if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL && 
-            !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")) {
-          const { data } = await supabase.auth.getUser()
-          if (!data.user) {
-            router.push("/")
-            return
-          }
-          setUser(data.user)
-        } else {
-          // Демо-режим - создаем фиктивного админа
-          setUser({ 
-            id: "demo-admin", 
-            email: "admin@example.com",
-            created_at: new Date().toISOString()
-          })
-        }
-      } catch (error) {
-        console.warn("Error fetching user data:", error)
-        setUser({ 
-          id: "demo-admin", 
-          email: "admin@example.com",
-          created_at: new Date().toISOString()
-        })
-      } finally {
-        setLoading(false)
-      }
+    // Проверяем аутентификацию через NextAuth
+    if (status === "loading") return
+    
+    if (!session?.user) {
+      router.push("/auth")
+      return
     }
-    fetchUser()
-  }, [router])
+  }, [session, status, router])
 
-  const isAdmin = user?.email === 'agentgl007@gmail.com' || user?.email === 'admin@example.com'
+  const isAdmin = session?.user?.email === 'agentgl007@gmail.com'
 
-  if (loading) {
+  if (status === "loading") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
         <div className="text-center">
@@ -97,7 +73,7 @@ export default function AdminPage() {
               <Home className="h-4 w-4" />
               На главную
             </Button>
-            <span className="text-orange-600 font-medium">{user?.email}</span>
+            <span className="text-orange-600 font-medium">{session?.user?.email}</span>
           </div>
         </div>
       </header>
