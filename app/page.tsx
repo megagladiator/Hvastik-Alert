@@ -112,9 +112,9 @@ export default function HomePage() {
     // Анимация счетчика найденных питомцев
     const timer = setInterval(() => {
       setFoundPetsCount((prev) => {
-        if (prev < 500) return prev + 5
+        if (prev < 55) return prev + 1
         clearInterval(timer)
-        return 500
+        return 55
       })
     }, 50)
 
@@ -403,22 +403,22 @@ export default function HomePage() {
             {/* УТП крупным шрифтом */}
             <p className="text-xl md:text-2xl text-gray-700 mb-8 font-semibold">
               Крупнейшая база потерянных и найденных животных в Анапе –<br />
-              <span className="text-green-600">90% питомцев находят через наш сервис!</span>
+              <span className="text-green-600">91% питомцев находят через наш сервис!</span>
             </p>
 
             {/* Социальное доказательство */}
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-12 inline-block">
               <div className="flex items-center justify-center space-x-8">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-orange-500 mb-1">{foundPetsCount}+</div>
+                  <div className="text-3xl font-bold text-orange-500 mb-1">55+</div>
                   <div className="text-sm text-gray-600">питомцев найдено</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-500 mb-1">24ч</div>
+                  <div className="text-3xl font-bold text-green-500 mb-1">36ч</div>
                   <div className="text-sm text-gray-600">средний поиск</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-500 mb-1">90%</div>
+                  <div className="text-3xl font-bold text-blue-500 mb-1">91%</div>
                   <div className="text-sm text-gray-600">успешных поисков</div>
                 </div>
               </div>
@@ -766,7 +766,7 @@ export default function HomePage() {
                 <p className="text-gray-400 text-sm">Помогаем найти потерянных питомцев в Анапе</p>
                 <div className="mt-4 flex items-center text-sm text-gray-400">
                   <Award className="h-4 w-4 mr-2 text-yellow-500" />
-                  500+ успешных воссоединений
+                  55+ успешных воссоединений
                 </div>
               </div>
               <div>
