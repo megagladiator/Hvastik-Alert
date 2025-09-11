@@ -13,79 +13,51 @@ import {
   Loader2,
   RefreshCw
 } from "lucide-react"
-import { User, UserStats, UserFilters, UserRole, UserStatus } from "@/types/user"
-import { UserAPI } from "@/lib/user-api"
+import { useUsers, User, UserFilters } from "@/hooks/use-user"
 import UserCard from "./user-card"
 import UserFiltersComponent from "./user-filters"
 import { useToast } from "@/hooks/use-toast"
 
 export default function UserList() {
-  const [users, setUsers] = useState<User[]>([])
-  const [stats, setStats] = useState<UserStats | null>(null)
-  const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<UserFilters>({
-    search: '',
+    email: '',
     role: 'all',
     status: 'all'
   })
-  const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
+  const { users, loading, error, refetch, createUser, updateUser, deleteUser } = useUsers(filters)
   const { toast } = useToast()
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true)
-      const result = await UserAPI.getUsers(filters, page, 20)
-      setUsers(result.users)
-      setTotal(result.total)
-    } catch (error) {
-      console.error('Ошибка загрузки пользователей:', error)
-      toast({
-        title: "Ошибка",
-        description: "Не удалось загрузить список пользователей",
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
-    }
+  // Статистика вычисляется из текущих пользователей
+  const stats = {
+    total_users: users.length,
+    active_users: users.filter(u => u.status === 'active').length,
+    blocked_users: users.filter(u => u.status === 'banned').length,
+    new_users_this_month: users.filter(u => {
+      const monthAgo = new Date()
+      monthAgo.setMonth(monthAgo.getMonth() - 1)
+      return new Date(u.createdAt) > monthAgo
+    }).length
   }
-
-  const loadStats = async () => {
-    try {
-      const userStats = await UserAPI.getUserStats()
-      setStats(userStats)
-    } catch (error) {
-      console.error('Ошибка загрузки статистики:', error)
-    }
-  }
-
-  useEffect(() => {
-    loadUsers()
-    loadStats()
-  }, [page, filters])
 
   const handleFiltersChange = (newFilters: UserFilters) => {
     setFilters(newFilters)
-    setPage(1) // Сбрасываем на первую страницу при изменении фильтров
   }
 
   const handleSearch = () => {
-    loadUsers()
+    refetch()
   }
 
   const handleReset = () => {
-    setPage(1)
-    loadUsers()
+    setFilters({ email: '', role: 'all', status: 'all' })
   }
 
-  const handleRoleChange = async (userId: string, role: UserRole) => {
+  const handleRoleChange = async (userId: string, role: 'admin' | 'user') => {
     try {
-      await UserAPI.updateUserRole(userId, role)
+      await updateUser(userId, { role })
       toast({
         title: "Успешно",
         description: "Роль пользователя изменена"
       })
-      loadUsers() // Перезагружаем список
     } catch (error) {
       console.error('Ошибка изменения роли:', error)
       toast({
@@ -96,14 +68,13 @@ export default function UserList() {
     }
   }
 
-  const handleStatusChange = async (userId: string, status: UserStatus) => {
+  const handleStatusChange = async (userId: string, status: 'active' | 'inactive' | 'banned') => {
     try {
-      await UserAPI.updateUserStatus(userId, status)
+      await updateUser(userId, { status })
       toast({
         title: "Успешно",
-        description: `Пользователь ${status === UserStatus.BLOCKED ? 'заблокирован' : 'разблокирован'}`
+        description: `Пользователь ${status === 'banned' ? 'заблокирован' : 'разблокирован'}`
       })
-      loadUsers() // Перезагружаем список
     } catch (error) {
       console.error('Ошибка изменения статуса:', error)
       toast({
@@ -116,13 +87,11 @@ export default function UserList() {
 
   const handleDelete = async (userId: string) => {
     try {
-      await UserAPI.deleteUser(userId)
+      await deleteUser(userId)
       toast({
         title: "Успешно",
         description: "Пользователь удален"
       })
-      loadUsers() // Перезагружаем список
-      loadStats() // Обновляем статистику
     } catch (error) {
       console.error('Ошибка удаления пользователя:', error)
       toast({
@@ -134,8 +103,7 @@ export default function UserList() {
   }
 
   const handleRefresh = () => {
-    loadUsers()
-    loadStats()
+    refetch()
   }
 
   return (
@@ -246,28 +214,6 @@ export default function UserList() {
         </div>
       )}
 
-      {/* Пагинация (если нужно) */}
-      {total > 20 && (
-        <div className="flex items-center justify-center space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => setPage(page - 1)}
-            disabled={page === 1 || loading}
-          >
-            Назад
-          </Button>
-          <span className="text-sm text-gray-600">
-            Страница {page} из {Math.ceil(total / 20)}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setPage(page + 1)}
-            disabled={page >= Math.ceil(total / 20) || loading}
-          >
-            Вперед
-          </Button>
-        </div>
-      )}
     </div>
   )
 }
