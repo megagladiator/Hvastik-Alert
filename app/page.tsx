@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -68,6 +68,12 @@ export default function HomePage() {
   // State for background image URL and darkening percentage
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string>("/placeholder.svg?height=1080&width=1920")
   const [backgroundDarkeningPercentage, setBackgroundDarkeningPercentage] = useState<number>(50)
+  
+  // Обертываем setBackgroundImageUrl для логирования
+  const setBackgroundImageUrlWithLog = (url: string, reason: string) => {
+    console.log(`🎨 УСТАНОВКА ФОНА: ${url} (причина: ${reason})`)
+    setBackgroundImageUrl(url)
+  }
   // NextAuth.js session
   const { data: session, status } = useSession()
 
@@ -76,35 +82,138 @@ export default function HomePage() {
       id: "1",
       name: "Анна",
       petName: "Рекс",
-      petType: "лабрадор",
-      story: "Нашли через 2 дня благодаря вашему сайту! Спасибо огромное!",
-      photo: "/placeholder.svg?height=60&width=60",
+      petType: "золотистый ретривер",
+      story: "Рекс убежал во время прогулки по набережной. Благодаря вашему сайту его нашли уже через 3 часа! Семья, которая его подобрала, увидела наше объявление и сразу связалась с нами. Спасибо огромное!",
+      photo: "/adorable-looking-kitten-with-dog.jpg",
       location: "Центральный пляж",
-      daysToFind: 2,
+      daysToFind: 1,
     },
     {
       id: "2",
       name: "Михаил",
       petName: "Мурка",
-      petType: "персидская кошка",
-      story: "Потерялась на даче, нашли через ваш сервис за 4 дня!",
-      photo: "/placeholder.svg?height=60&width=60",
+      petType: "британская кошка",
+      story: "Мурка потерялась во время переезда. Мы думали, что никогда её не найдем, но через ваш сервис получили сообщение от доброй женщины из Витязево. Она нашла нашу кошечку и ухаживала за ней 5 дней!",
+      photo: "/adorable-looking-kitten-with-dog.jpg",
       location: "Витязево",
-      daysToFind: 4,
+      daysToFind: 5,
     },
     {
       id: "3",
       name: "Елена",
       petName: "Барон",
       petType: "немецкая овчарка",
-      story: "Убежал во время грозы. Благодаря карте нашли за день!",
-      photo: "/placeholder.svg?height=60&width=60",
-      location: "Джемете",
+      story: "Барон испугался фейерверков и убежал. Мы искали его 2 дня, а потом нашли объявление на вашем сайте - кто-то подобрал его в парке. Встреча была очень трогательной!",
+      photo: "/adorable-looking-kitten-with-dog.jpg",
+      location: "Парк 30-летия Победы",
+      daysToFind: 2,
+    },
+    {
+      id: "4",
+      name: "Дмитрий",
+      petName: "Белка",
+      petType: "дворняжка",
+      story: "Белка - наша спасенная собака. Она потерялась в районе Высокого берега. Благодаря карте на вашем сайте мы увидели, что её подобрали всего в 500 метрах от дома! Спасибо за такую удобную навигацию!",
+      photo: "/adorable-looking-kitten-with-dog.jpg",
+      location: "Высокий берег",
       daysToFind: 1,
+    },
+    {
+      id: "5",
+      name: "Ольга",
+      petName: "Тиша",
+      petType: "персидская кошка",
+      story: "Тиша выпала из окна 3-го этажа и потерялась. Мы были в отчаянии, но через ваш сайт нашли её через неделю! Оказывается, её подобрала семья из Джемете и очень хорошо за ней ухаживала. Спасибо за то, что помогли нам воссоединиться!",
+      photo: "/adorable-looking-kitten-with-dog.jpg",
+      location: "Джемете",
+      daysToFind: 7,
+    },
+    {
+      id: "6",
+      name: "Сергей",
+      petName: "Рыжик",
+      petType: "мейн-кун",
+      story: "Рыжик - наш большой и пушистый кот. Он потерялся во время грозы и мы искали его 4 дня. Благодаря вашему сервису его нашли в соседнем дворе! Оказывается, он прятался в подвале и его нашли местные жители. Спасибо за помощь!",
+      photo: "/adorable-looking-kitten-with-dog.jpg",
+      location: "Центр города",
+      daysToFind: 4,
     },
   ]
 
   const SETTINGS_ROW_ID = "00000000-0000-0000-0000-000000000001" // Fixed ID for the single settings row
+
+  const fetchAppSettings = useCallback(async (forceRefresh = false) => {
+    console.log('🔄 fetchAppSettings вызвана с forceRefresh:', forceRefresh)
+    try {
+      // Проверяем, настроен ли Supabase
+      if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL && 
+          !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")) {
+        
+        // Увеличиваем таймаут для запроса к Supabase
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Supabase timeout')), 10000)
+        )
+        
+        const supabasePromise = supabase
+          .from("app_settings")
+          .select("*")
+          .eq("id", SETTINGS_ROW_ID)
+          .single()
+
+        try {
+          const { data, error } = await Promise.race([supabasePromise, timeoutPromise]) as any
+
+          if (error) {
+            console.warn("Supabase error, using default settings:", error.message)
+          // Используем fallback только при ошибке подключения к БД
+          setBackgroundImageUrlWithLog("/view-cats-dogs-showing-friendship (1) — копия.jpg", "ошибка подключения к БД")
+          console.log("🌙 Устанавливаем fallback белое затемнение: 30%")
+          setBackgroundDarkeningPercentage(30)
+            return
+          } 
+          
+          if (data) {
+            console.log("Loaded settings from Supabase:", data)
+            
+            // Используем данные из БД, только если они есть
+            if (data.background_image_url) {
+              // Добавляем кэш-бастинг к URL изображения для принудительного обновления
+              const finalImageUrl = forceRefresh ? `${data.background_image_url}?t=${Date.now()}` : data.background_image_url
+              setBackgroundImageUrlWithLog(finalImageUrl, `данные из БД${forceRefresh ? ' (принудительное обновление)' : ''}`)
+            } else {
+              // Если в БД нет URL изображения, используем fallback
+              console.log("⚠️ No background image URL in database, using fallback")
+              setBackgroundImageUrlWithLog("/view-cats-dogs-showing-friendship (1) — копия.jpg", "нет URL в БД")
+            }
+            
+            const darkeningValue = data.background_darkening_percentage || 30
+            console.log("🌙 Устанавливаем белое затемнение:", darkeningValue + "%")
+            setBackgroundDarkeningPercentage(darkeningValue)
+            return
+          }
+        } catch (timeoutError) {
+          console.warn("Supabase timeout, using default settings")
+          // Используем fallback только при таймауте
+          setBackgroundImageUrlWithLog("/view-cats-dogs-showing-friendship (1) — копия.jpg", "таймаут Supabase")
+          console.log("🌙 Устанавливаем fallback белое затемнение при таймауте: 30%")
+          setBackgroundDarkeningPercentage(30)
+          return
+        }
+      }
+
+      // Используем fallback только если Supabase не настроен
+      console.log("⚠️ Supabase not configured, using fallback settings")
+      setBackgroundImageUrlWithLog("/view-cats-dogs-showing-friendship (1) — копия.jpg", "Supabase не настроен")
+      console.log("🌙 Устанавливаем fallback белое затемнение (Supabase не настроен): 30%")
+      setBackgroundDarkeningPercentage(30)
+    } catch (error) {
+      console.warn("Unexpected error fetching app settings, using defaults:", error)
+      // Fallback только при неожиданной ошибке
+      setBackgroundImageUrlWithLog("/view-cats-dogs-showing-friendship (1) — копия.jpg", "неожиданная ошибка")
+      console.log("🌙 Устанавливаем fallback белое затемнение (неожиданная ошибка): 30%")
+      setBackgroundDarkeningPercentage(30)
+    }
+  }, [])
 
   useEffect(() => {
     fetchPets()
@@ -123,9 +232,20 @@ export default function HomePage() {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
     }, 5000)
 
+    // Слушаем события обновления настроек
+    const handleSettingsUpdate = () => {
+      console.log('🎯 Получен сигнал обновления настроек, перезагружаем с принудительным обновлением...')
+      console.log('🎯 Текущий backgroundImageUrl перед обновлением:', backgroundImageUrl)
+      console.log('🎯 Текущий backgroundDarkeningPercentage перед обновлением:', backgroundDarkeningPercentage + "%")
+      fetchAppSettings(true) // Принудительное обновление с кэш-бастингом
+    }
+
+    window.addEventListener('settingsUpdated', handleSettingsUpdate)
+
     return () => {
       clearInterval(timer)
       clearInterval(testimonialTimer)
+      window.removeEventListener('settingsUpdated', handleSettingsUpdate)
     }
   }, [])
 
@@ -133,52 +253,13 @@ export default function HomePage() {
     filterPets()
   }, [pets, searchQuery, typeFilter, animalFilter])
 
+  // Отслеживаем изменения backgroundImageUrl
+  useEffect(() => {
+    console.log("🔄 backgroundImageUrl изменился на:", backgroundImageUrl)
+    console.log("🔄 backgroundDarkeningPercentage (белое затемнение) изменился на:", backgroundDarkeningPercentage + "%")
+  }, [backgroundImageUrl, backgroundDarkeningPercentage])
 
-  const fetchAppSettings = async () => {
-    try {
-      // Проверяем, настроен ли Supabase
-      if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL && 
-          !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")) {
-        
-        // Увеличиваем таймаут для запроса к Supabase
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Supabase timeout')), 10000)
-        )
-        
-        const supabasePromise = supabase.from("app_settings").select("*").eq("id", SETTINGS_ROW_ID).single()
 
-        try {
-          const { data, error } = await Promise.race([supabasePromise, timeoutPromise]) as any
-
-          if (error) {
-            console.warn("Supabase error, using default settings:", error.message)
-            // Используем картинку из базы данных даже при ошибке
-            setBackgroundImageUrl("/view-cats-dogs-showing-friendship (1) — копия.jpg")
-            setBackgroundDarkeningPercentage(30)
-          } else if (data) {
-            console.log("Loaded settings from Supabase:", data)
-            setBackgroundImageUrl(data.background_image_url || "/view-cats-dogs-showing-friendship (1) — копия.jpg")
-            setBackgroundDarkeningPercentage(data.background_darkening_percentage || 30)
-            return
-          }
-        } catch (timeoutError) {
-          console.warn("Supabase timeout, using default settings")
-          // Используем картинку из базы данных при таймауте
-          setBackgroundImageUrl("/view-cats-dogs-showing-friendship (1) — копия.jpg")
-          setBackgroundDarkeningPercentage(30)
-        }
-      }
-
-      // Используем картинку из базы данных по умолчанию
-      setBackgroundImageUrl("/view-cats-dogs-showing-friendship (1) — копия.jpg")
-      setBackgroundDarkeningPercentage(30)
-    } catch (error) {
-      console.warn("Unexpected error fetching app settings, using defaults:", error)
-      // Fallback to image from database
-      setBackgroundImageUrl("/view-cats-dogs-showing-friendship (1) — копия.jpg")
-      setBackgroundDarkeningPercentage(30)
-    }
-  }
 
   const fetchPets = async () => {
     try {
@@ -324,12 +405,17 @@ export default function HomePage() {
   }
 
 
+  // Логируем текущие значения для отладки
+  console.log("🎨 РЕНДЕР: backgroundImageUrl =", backgroundImageUrl)
+  console.log("🌙 РЕНДЕР: backgroundDarkeningPercentage (белое затемнение) =", backgroundDarkeningPercentage + "%")
+  console.log("📅 РЕНДЕР: время рендера =", new Date().toLocaleTimeString())
+
   return (
     <div className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: `url(${backgroundImageUrl})` }}>
       {/* Overlay for better readability */}
       <div
         className="min-h-screen backdrop-blur-sm"
-        style={{ backgroundColor: `rgba(0, 0, 0, ${backgroundDarkeningPercentage / 100})` }}
+        style={{ backgroundColor: `rgba(255, 255, 255, ${backgroundDarkeningPercentage / 100})` }}
       >
         {/* Navigation Bar */}
         <nav className="bg-white/90 backdrop-blur-sm shadow-sm border-b">
@@ -469,39 +555,74 @@ export default function HomePage() {
           <div className="container mx-auto px-4">
             <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Истории успеха</h2>
 
-            <div className="max-w-4xl mx-auto">
-              <div className="bg-gradient-to-r from-orange-50 to-green-50 rounded-2xl p-8 shadow-lg">
-                <div className="flex items-center space-x-6">
-                  <img
-                    src={testimonials[currentTestimonial].photo || "/placeholder.svg"}
-                    alt={testimonials[currentTestimonial].petName}
-                    className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center mb-2">
-                      <div className="flex text-yellow-400">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="h-5 w-5 fill-current" />
-                        ))}
+            <div className="max-w-7xl mx-auto">
+              {/* Две карточки рядом */}
+              <div className="grid md:grid-cols-2 gap-10 mb-10">
+                {/* Левая карточка */}
+                <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-3xl p-8 shadow-xl">
+                  <div className="flex items-start space-x-6">
+                    <img
+                      src={testimonials[currentTestimonial].photo || "/placeholder.svg"}
+                      alt={testimonials[currentTestimonial].petName}
+                      className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-xl flex-shrink-0"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center mb-3">
+                        <div className="flex text-yellow-400">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="h-5 w-5 fill-current" />
+                          ))}
+                        </div>
+                        <span className="ml-3 text-sm text-gray-600 font-medium">
+                          Найден за {testimonials[currentTestimonial].daysToFind} {testimonials[currentTestimonial].daysToFind === 1 ? 'день' : 'дня'}
+                        </span>
                       </div>
-                      <span className="ml-2 text-sm text-gray-600">
-                        Найден за {testimonials[currentTestimonial].daysToFind} дня
-                      </span>
+                      <blockquote className="text-base text-gray-800 mb-4 leading-relaxed">
+                        "{testimonials[currentTestimonial].story}"
+                      </blockquote>
+                      <div className="text-sm text-gray-600">
+                        <strong>{testimonials[currentTestimonial].name}</strong> •{" "}
+                        {testimonials[currentTestimonial].petName}, {testimonials[currentTestimonial].petType} •{" "}
+                        {testimonials[currentTestimonial].location}
+                      </div>
                     </div>
-                    <blockquote className="text-lg text-gray-800 mb-2">
-                      "{testimonials[currentTestimonial].story}"
-                    </blockquote>
-                    <div className="text-sm text-gray-600">
-                      <strong>{testimonials[currentTestimonial].name}</strong> •{" "}
-                      {testimonials[currentTestimonial].petName}, {testimonials[currentTestimonial].petType} •{" "}
-                      {testimonials[currentTestimonial].location}
+                  </div>
+                </div>
+
+                {/* Правая карточка */}
+                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-3xl p-8 shadow-xl">
+                  <div className="flex items-start space-x-6">
+                    <img
+                      src={testimonials[(currentTestimonial + 1) % testimonials.length].photo || "/placeholder.svg"}
+                      alt={testimonials[(currentTestimonial + 1) % testimonials.length].petName}
+                      className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-xl flex-shrink-0"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center mb-3">
+                        <div className="flex text-yellow-400">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="h-5 w-5 fill-current" />
+                          ))}
+                        </div>
+                        <span className="ml-3 text-sm text-gray-600 font-medium">
+                          Найден за {testimonials[(currentTestimonial + 1) % testimonials.length].daysToFind} {testimonials[(currentTestimonial + 1) % testimonials.length].daysToFind === 1 ? 'день' : 'дня'}
+                        </span>
+                      </div>
+                      <blockquote className="text-base text-gray-800 mb-4 leading-relaxed">
+                        "{testimonials[(currentTestimonial + 1) % testimonials.length].story}"
+                      </blockquote>
+                      <div className="text-sm text-gray-600">
+                        <strong>{testimonials[(currentTestimonial + 1) % testimonials.length].name}</strong> •{" "}
+                        {testimonials[(currentTestimonial + 1) % testimonials.length].petName}, {testimonials[(currentTestimonial + 1) % testimonials.length].petType} •{" "}
+                        {testimonials[(currentTestimonial + 1) % testimonials.length].location}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Индикаторы */}
-              <div className="flex justify-center mt-6 space-x-2">
+              <div className="flex justify-center space-x-2">
                 {testimonials.map((_, index) => (
                   <button
                     key={index}

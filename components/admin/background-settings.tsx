@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 // import { Slider } from "@/components/ui/slider" // Removed due to React 19 compatibility issues
 import { Upload, ImageIcon, CheckCircle, Loader2 } from "lucide-react"
-import { safeSupabase as supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 
 export default function BackgroundImageSettings() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -27,6 +27,13 @@ export default function BackgroundImageSettings() {
   const fetchSettings = async () => {
     setLoadingSettings(true)
     try {
+      if (!supabase) {
+        console.warn("Supabase not configured, using default settings")
+        setDarkeningPercentage([50])
+        setCurrentImageUrl("/placeholder.svg?height=1080&width=1920")
+        return
+      }
+
       const { data, error } = await supabase.from("app_settings").select("*").eq("id", SETTINGS_ROW_ID).single()
 
       if (error) {
@@ -35,8 +42,16 @@ export default function BackgroundImageSettings() {
         setDarkeningPercentage([50])
         setCurrentImageUrl("/placeholder.svg?height=1080&width=1920")
       } else if (data) {
+        console.log("Fetched settings from database:", data)
         setDarkeningPercentage([data.background_darkening_percentage])
-        setCurrentImageUrl(data.background_image_url)
+        // Проверяем, что URL изображения не пустой
+        if (data.background_image_url) {
+          console.log("Setting current image URL from database:", data.background_image_url)
+          setCurrentImageUrl(data.background_image_url)
+        } else {
+          console.log("No background image URL in database, using fallback")
+          setCurrentImageUrl("/view-cats-dogs-showing-friendship (1) — копия.jpg")
+        }
       }
     } finally {
       setLoadingSettings(false)
@@ -97,47 +112,98 @@ export default function BackgroundImageSettings() {
     }
   }
 
-  const handleQuickSelect = async (imageUrl: string) => {
+  const handleQuickSelect = (imageUrl: string) => {
+    // Просто устанавливаем предварительный просмотр, не сохраняем в БД
+    setCurrentImageUrl(imageUrl)
+    setPreviewUrl(imageUrl)
+  }
+
+  const handleSaveSettings = async () => {
     try {
+      if (!supabase) {
+        alert("Supabase не настроен. Настройки не могут быть сохранены.")
+        return
+      }
+
+      const imageUrl = previewUrl || currentImageUrl
+      if (!imageUrl) {
+        alert("Выберите изображение для сохранения.")
+        return
+      }
+
+      console.log("Saving settings to database:", { 
+        imageUrl, 
+        darkeningPercentage: darkeningPercentage[0],
+        settingsRowId: SETTINGS_ROW_ID 
+      })
+
+      const updateData = { 
+        background_image_url: imageUrl, 
+        background_darkening_percentage: darkeningPercentage[0],
+        updated_at: new Date().toISOString() 
+      }
+      
+      console.log("Update data:", updateData)
+
+      // Используем update, так как запись уже существует
       const { error } = await supabase
         .from("app_settings")
-        .update({ 
-          background_image_url: imageUrl, 
-          updated_at: new Date().toISOString() 
-        })
+        .update(updateData)
         .eq("id", SETTINGS_ROW_ID)
 
       if (error) {
-        console.error("Error updating background image:", error)
-        alert("Ошибка сохранения изображения.")
+        console.error("Error saving settings:", error)
+        alert("Ошибка сохранения настроек в базе данных.")
       } else {
         setCurrentImageUrl(imageUrl)
-        alert("Фоновое изображение успешно изменено!")
+        setPreviewUrl(null)
+        console.log("Settings saved successfully")
+        alert("Настройки успешно сохранены! Теперь нажмите 'Обновить настройки' чтобы применить изменения на главной странице.")
       }
     } catch (error) {
-      console.error("Unexpected error during image update:", error)
-      alert("Произошла непредвиденная ошибка.")
+      console.error("Unexpected error during save:", error)
+      alert("Произошла непредвиденная ошибка при сохранении.")
     }
   }
 
-  const handleDarkeningChange = async (value: number[]) => {
-    setDarkeningPercentage(value)
+  const handleRefreshSettings = async () => {
     try {
-      // Update the app_settings table with the new darkening percentage
-      const { error } = await supabase
-        .from("app_settings")
-        .update({ background_darkening_percentage: value[0], updated_at: new Date().toISOString() })
-        .eq("id", SETTINGS_ROW_ID)
+      console.log("Starting settings refresh...")
+      console.log("Current image URL before refresh:", currentImageUrl)
+      
+      // Обновляем настройки в локальном состоянии
+      await fetchSettings()
+      
+      console.log("Current image URL after fetchSettings:", currentImageUrl)
+      
+      // Отправляем событие на все открытые вкладки для обновления настроек
+      window.dispatchEvent(new CustomEvent('settingsUpdated'))
+      console.log("Settings update event dispatched")
+      
+      // Также отправляем сигнал через API (для будущих улучшений)
+      const response = await fetch('/api/refresh-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
 
-      if (error) {
-        console.error("Error updating darkening percentage:", error)
-        alert("Ошибка сохранения процента затемнения.")
+      if (response.ok) {
+        alert("Настройки успешно обновлены! Главная страница автоматически обновится.")
       } else {
-        console.log("Darkening percentage updated successfully:", value[0])
+        alert("Настройки обновлены локально. Если главная страница не обновилась, перезагрузите её вручную.")
       }
     } catch (error) {
-      console.error("Unexpected error during darkening update:", error)
+      console.error("Error refreshing settings:", error)
+      // Даже если API не работает, отправляем событие
+      window.dispatchEvent(new CustomEvent('settingsUpdated'))
+      alert("Настройки обновлены локально. Если главная страница не обновилась, перезагрузите её вручную.")
     }
+  }
+
+  const handleDarkeningChange = (value: number[]) => {
+    // Просто обновляем локальное состояние, не сохраняем в БД
+    setDarkeningPercentage(value)
   }
 
   if (loadingSettings) {
@@ -255,6 +321,25 @@ export default function BackgroundImageSettings() {
               <Upload className="h-4 w-4 mr-2" /> Загрузить и установить
             </>
           )}
+        </Button>
+
+        {/* Кнопка сохранения настроек */}
+        <Button
+          onClick={handleSaveSettings}
+          className="w-full bg-green-500 hover:bg-green-600 text-white"
+        >
+          <CheckCircle className="h-4 w-4 mr-2" />
+          Сохранить настройки
+        </Button>
+
+        {/* Кнопка обновления настроек */}
+        <Button
+          onClick={handleRefreshSettings}
+          variant="outline"
+          className="w-full border-orange-500 text-orange-500 hover:bg-orange-50"
+        >
+          <CheckCircle className="h-4 w-4 mr-2" />
+          Обновить настройки на главной странице
         </Button>
 
         {/* Darkening Percentage Input */}
