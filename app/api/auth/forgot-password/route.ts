@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { supabaseServer } from '@/lib/supabase-server'
+import { getAuthUrl } from '@/lib/url-utils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,13 +26,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Получаем URL для сброса пароля
+    const resetUrl = getAuthUrl('/auth/reset-password', request)
+    
     // Отправляем письмо для сброса пароля через обычный клиент
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/reset-password`,
+      redirectTo: resetUrl,
     })
     
     console.log('Password reset request for:', email)
-    console.log('Redirect URL:', `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/reset-password`)
+    console.log('Redirect URL:', resetUrl)
 
     if (error) {
       console.error('Error sending password reset email:', error)

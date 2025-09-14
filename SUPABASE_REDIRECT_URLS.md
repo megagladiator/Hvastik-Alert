@@ -1,10 +1,10 @@
 # Настройка Redirect URLs в Supabase
 
 ## 🎯 Проблема
-При деплое на Vercel получается 404 ошибка на `/auth/error` и `/auth/callback`.
+При деплое на Vercel получается 404 ошибка на `/auth/error` и `/auth/callback`. Vercel создает новый URL при каждом деплое.
 
 ## ✅ Решение
-Добавьте следующие URL в настройки Supabase:
+Используем динамические URL из заголовков запроса вместо статических.
 
 ### 1. Site URL
 ```
@@ -12,21 +12,25 @@ https://your-app-name.vercel.app
 ```
 
 ### 2. Redirect URLs
-Добавьте все эти URL в раздел "Redirect URLs":
+Добавьте wildcard URL в раздел "Redirect URLs":
 
 ```
 # Для разработки
-http://localhost:3000/auth/verify-email
-http://localhost:3000/auth/reset-password
-http://localhost:3000/auth/callback
-http://localhost:3000/auth/error
+http://localhost:3000/auth/*
 
-# Для продакшена
-https://your-app-name.vercel.app/auth/verify-email
-https://your-app-name.vercel.app/auth/reset-password
-https://your-app-name.vercel.app/auth/callback
-https://your-app-name.vercel.app/auth/error
+# Для продакшена (замените на ваш домен)
+https://your-app-name.vercel.app/auth/*
+https://*.vercel.app/auth/*
+
+# Или добавьте конкретные URL для каждого деплоя
+https://v0-hvastik-alert-project-git-main-agentgl007-7440s-projects.vercel.app/auth/*
 ```
+
+### 3. Динамические URL
+Теперь приложение автоматически определяет правильный URL из заголовков запроса:
+- `origin` - домен запроса
+- `x-forwarded-proto` - протокол (http/https)
+- Автоматическое формирование redirect URLs
 
 ## 🔧 Как настроить
 
