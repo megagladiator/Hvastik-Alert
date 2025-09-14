@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
+import { getAuthUrl } from "@/lib/url-utils"
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
@@ -39,7 +40,7 @@ export default function RegisterPage() {
         email: email,
         password: password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/verify-email`,
+          emailRedirectTo: getAuthUrl('/auth/verify-email'),
           // Временно отключаем подтверждение email для тестирования
           data: {
             email_confirm: false
