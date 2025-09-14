@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { signIn, getSession } from "next-auth/react"
+import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
@@ -32,28 +32,42 @@ export default function AuthPage() {
     
     try {
       if (mode === "login") {
-        // Вход через NextAuth
-        const result = await signIn("credentials", {
-          email,
-          password,
-          redirect: false,
+        // Вход через Supabase
+        if (!supabase) {
+          setError("Система входа недоступна")
+          return
+        }
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
         })
         
-        if (result?.error) {
-          if (result.error === 'EMAIL_NOT_VERIFIED') {
+        if (error) {
+          console.error("Ошибка входа:", error)
+          
+          if (error.message.includes('Email not confirmed')) {
             setError("Email не подтвержден. Проверьте почту и подтвердите регистрацию.")
-          } else {
+          } else if (error.message.includes('Invalid login credentials')) {
             setError("Неверный email или пароль")
+          } else if (error.message.includes('rate limit') || error.message.includes('Too many requests')) {
+            setError("Слишком много попыток входа. Попробуйте позже")
+          } else {
+            setError("Ошибка при входе")
           }
         } else {
           setInfo("Вход выполнен!")
-          router.push("/cabinet")
+          // Небольшая задержка для установки сессии
+          setTimeout(() => {
+            router.push("/cabinet")
+          }, 500)
         }
       } else {
-        // Регистрация через Firebase
+        // Регистрация через Supabase
         setError("Регистрация временно недоступна. Используйте страницу регистрации.")
       }
     } catch (error: any) {
+      console.error("Ошибка входа:", error)
       setError("Произошла ошибка при входе")
     }
     
@@ -62,8 +76,12 @@ export default function AuthPage() {
 
 
   return (
-    <div className="max-w-md w-full mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
-      <h2 className="text-xl font-bold mb-4">{mode === "register" ? "Регистрация" : "Вход"}</h2>
+    <div className="max-w-md w-full mx-auto mt-10 p-6 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-lg border-2 border-blue-200">
+      <div className="text-center mb-4">
+        <div className="text-blue-600 text-2xl mb-2">🔐</div>
+        <h2 className="text-xl font-bold text-blue-800">{mode === "register" ? "Регистрация" : "Вход через Supabase"}</h2>
+        <p className="text-sm text-blue-600 mt-1">Безопасная аутентификация</p>
+      </div>
       
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <input
@@ -75,7 +93,7 @@ export default function AuthPage() {
           autoComplete="username"
           name="email"
           id="email"
-          className="w-full border rounded px-3 py-2"
+          className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
           ref={emailInputRef}
           disabled={loading}
         />
@@ -88,7 +106,7 @@ export default function AuthPage() {
           autoComplete="current-password"
           name="password"
           id="password"
-          className="w-full border rounded px-3 py-2"
+          className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
           ref={passwordInputRef}
           disabled={loading}
         />
@@ -102,7 +120,7 @@ export default function AuthPage() {
             autoComplete="new-password"
             name="repeat-password"
             id="repeat-password"
-            className="w-full border rounded px-3 py-2"
+            className="w-full border-2 border-blue-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
             ref={repeatPasswordInputRef}
             disabled={loading}
           />
@@ -119,6 +137,12 @@ export default function AuthPage() {
                   <li>Зарегистрироваться, если аккаунта нет</li>
                   <li>Сбросить пароль, если забыли</li>
                 </ul>
+              </div>
+            )}
+            {error.includes('Слишком много попыток входа') && (
+              <div className="mt-3 text-sm text-gray-600">
+                <p>Попробуйте снова через час.</p>
+                <p>Это защита от спама.</p>
               </div>
             )}
             {error.includes("уже существует") && (
@@ -145,14 +169,23 @@ export default function AuthPage() {
           </div>
         )}
         {info && <div className="text-green-600 text-sm p-3 bg-green-50 border border-green-200 rounded-lg">{info}</div>}
-        <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded" disabled={loading}>
-          {loading ? "Загрузка..." : mode === "register" ? "Зарегистрироваться" : "Войти"}
+        <button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl" disabled={loading}>
+          {loading ? "Загрузка..." : mode === "register" ? "Зарегистрироваться" : "Войти через Supabase"}
         </button>
-        <div className="mt-4 text-center">
+        <div className="mt-4 text-center space-y-2">
           {mode === "register" ? (
             <span>Уже есть аккаунт? <button className="text-blue-600 underline" type="button" onClick={() => setMode("login")}>Войти</button></span>
           ) : (
-            <span>Нет аккаунта? <Link href="/register" className="text-blue-600 underline">Зарегистрироваться</Link></span>
+            <>
+              <div>
+                <span>Нет аккаунта? <Link href="/register" className="text-indigo-600 hover:text-indigo-800 underline font-medium">Зарегистрироваться</Link></span>
+              </div>
+              <div>
+                <Link href="/auth/forgot-password" className="text-indigo-600 hover:text-indigo-800 underline font-medium">
+                  Забыли пароль?
+                </Link>
+              </div>
+            </>
           )}
         </div>
       </form>

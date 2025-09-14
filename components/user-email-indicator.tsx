@@ -1,26 +1,34 @@
 "use client"
 import { usePathname, useRouter } from "next/navigation"
-import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { useUser } from "@/hooks/use-user"
+import { useSupabaseSession } from "@/hooks/use-supabase-session"
+import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
 
 export function UserEmailIndicator() {
   const pathname = usePathname()
   const router = useRouter()
-  const { data: session, status } = useSession()
-  const { user, loading, isAdmin } = useUser()
+  const { user, loading, isAuthenticated } = useSupabaseSession()
 
-  if (status === "loading" || loading) {
+  const handleSignOut = async () => {
+    if (supabase) {
+      await supabase.auth.signOut()
+      router.push("/")
+    }
+  }
+
+  if (loading) {
     return <div className="text-sm text-gray-500">Загрузка...</div>
   }
 
-  if (session?.user && user) {
+  if (isAuthenticated && user) {
+    const isAdmin = user.email === 'agentgl007@gmail.com'
+    
     return (
       <div className="flex items-center gap-2">
         <div className="flex flex-col items-end">
-          <span className="text-sm text-gray-600">
-            {user.name || user.email}
+          <span className="text-lg font-semibold text-amber-700">
+            {user.user_metadata?.name || user.email}
           </span>
           <div className="flex items-center gap-1">
             <Badge 
@@ -30,17 +38,17 @@ export function UserEmailIndicator() {
               {isAdmin ? "Админ" : "Пользователь"}
             </Badge>
             <Badge 
-              variant={user.status === 'active' ? "default" : "destructive"}
+              variant={user.email_confirmed_at ? "default" : "destructive"}
               className="text-xs"
             >
-              {user.status === 'active' ? "Активен" : user.status}
+              {user.email_confirmed_at ? "Подтвержден" : "Не подтвержден"}
             </Badge>
           </div>
         </div>
         <Button 
           variant="outline" 
           size="sm"
-          onClick={() => signOut()}
+          onClick={handleSignOut}
         >
           Выйти
         </Button>

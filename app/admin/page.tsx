@@ -7,29 +7,36 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import BackgroundImageSettings from "@/components/admin/background-settings"
 import UserList from "@/components/admin/user-list"
 import { Settings, Users, Database, ImageIcon, Home } from "lucide-react"
 
 export default function AdminPage() {
-  const { data: session, status } = useSession()
+  const { user, loading, isAuthenticated } = useSupabaseSession()
   const [activeTab, setActiveTab] = useState<string>("settings")
   const router = useRouter()
 
   useEffect(() => {
-    // Проверяем аутентификацию через NextAuth
-    if (status === "loading") return
+    // Проверяем аутентификацию через Supabase
+    if (loading) return
     
-    if (!session?.user) {
+    if (!isAuthenticated || !user) {
       router.push("/auth")
       return
     }
-  }, [session, status, router])
 
-  const isAdmin = session?.user?.email === 'agentgl007@gmail.com'
+    // Проверяем, что пользователь - администратор
+    const isAdmin = user.email === 'agentgl007@gmail.com'
+    if (!isAdmin) {
+      router.push("/")
+      return
+    }
+  }, [user, loading, isAuthenticated, router])
 
-  if (status === "loading") {
+  const isAdmin = user?.email === 'agentgl007@gmail.com'
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
         <div className="text-center">
@@ -73,7 +80,6 @@ export default function AdminPage() {
               <Home className="h-4 w-4" />
               На главную
             </Button>
-            <span className="text-orange-600 font-medium">{session?.user?.email}</span>
           </div>
         </div>
       </header>
