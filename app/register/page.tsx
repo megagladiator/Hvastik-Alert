@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { createUserWithEmailAndPassword } from "firebase/auth"
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { useRouter } from "next/navigation"
-import { signIn } from "next-auth/react"
+import { getEmailVerificationUrl } from "@/lib/utils"
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,20 +35,16 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       console.log("Пользователь создан:", userCredential.user)
       
-      // Автоматически входим через NextAuth
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
+      // Отправляем письмо подтверждения через Firebase с правильным URL
+      await sendEmailVerification(userCredential.user, {
+        url: getEmailVerificationUrl(),
+        handleCodeInApp: true, // Для мобильных приложений, но работает и в веб
       })
       
-      if (result?.error) {
-        setError("Регистрация прошла, но вход не удался. Попробуйте войти вручную.")
-        router.push("/auth")
-      } else {
-        // Перенаправляем в личный кабинет
-        router.push("/cabinet")
-      }
+      console.log("Письмо подтверждения отправлено на:", email)
+      setSuccess(true)
+      setError("")
+      
     } catch (error: any) {
       console.error("Ошибка регистрации:", error)
       
@@ -106,13 +103,33 @@ export default function RegisterPage() {
           </div>
         )}
         
-        <button
-          type="submit"
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded"
-          disabled={loading}
-        >
-          {loading ? "Регистрация..." : "Зарегистрироваться"}
-        </button>
+        {success && (
+          <div className="text-green-600 text-sm p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="font-medium mb-2">✅ Регистрация успешна!</div>
+            <div>На ваш email отправлено письмо с подтверждением.</div>
+            <div className="mt-2 text-xs">
+              💡 Проверьте почту и перейдите по ссылке для подтверждения.
+              После подтверждения вы сможете войти в систему.
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/auth")}
+              className="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded text-sm"
+            >
+              Перейти к входу
+            </button>
+          </div>
+        )}
+        
+        {!success && (
+          <button
+            type="submit"
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded"
+            disabled={loading}
+          >
+            {loading ? "Регистрация..." : "Зарегистрироваться"}
+          </button>
+        )}
         
         <div className="text-center">
           <a href="/auth" className="text-blue-600 underline">

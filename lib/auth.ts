@@ -56,13 +56,30 @@ export const authOptions: NextAuthOptions = {
 
           const user = userCredential.user
 
+          // Проверяем, подтвержден ли email
+          if (!user.emailVerified) {
+            // Для администратора разрешаем вход без подтверждения
+            if (credentials.email === 'agentgl007@gmail.com') {
+              console.log('Администратор входит без подтверждения email')
+            } else {
+              // Для остальных пользователей требуем подтверждение
+              throw new Error('EMAIL_NOT_VERIFIED')
+            }
+          }
+
           return {
             id: user.uid,
             email: user.email,
             name: user.displayName || user.email,
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Firebase auth error:", error)
+          
+          // Возвращаем специальную ошибку для неподтвержденного email
+          if (error.message === 'EMAIL_NOT_VERIFIED') {
+            throw new Error('EMAIL_NOT_VERIFIED')
+          }
+          
           return null
         }
       }

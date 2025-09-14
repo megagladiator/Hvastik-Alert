@@ -40,7 +40,11 @@ export default function AuthPage() {
         })
         
         if (result?.error) {
-          setError("Неверный email или пароль")
+          if (result.error === 'EMAIL_NOT_VERIFIED') {
+            setError("Email не подтвержден. Проверьте почту и подтвердите регистрацию.")
+          } else {
+            setError("Неверный email или пароль")
+          }
         } else {
           setInfo("Вход выполнен!")
           router.push("/cabinet")
