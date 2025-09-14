@@ -19,6 +19,11 @@ export function getAppBaseUrl(): string {
     return process.env.NEXTAUTH_URL
   }
   
+  // Хардкод для текущего деплоя (временно)
+  if (process.env.VERCEL) {
+    return 'https://v0-hvastik-alert-project-jd0w2h2oo-agentgl007-7440s-projects.vercel.app'
+  }
+  
   // Fallback для разработки
   if (process.env.NODE_ENV === 'development') {
     return 'http://localhost:3000'

@@ -6,50 +6,40 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
 import { supabase } from "@/lib/supabase"
+import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import Link from "next/link"
-import { v5 as uuidv5 } from 'uuid'
 
 export default function CabinetPage() {
-  const { data: session, status } = useSession()
+  const { user, loading: authLoading, isAuthenticated } = useSupabaseSession()
   const [ads, setAds] = useState<any[]>([])
   const [sort, setSort] = useState<string>("newest")
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>("active")
   const router = useRouter()
 
-  // Функция для генерации UUID из NextAuth.js ID
-  const generateUserId = (nextAuthId: string | undefined): string | null => {
-    if (!nextAuthId) return null
-    // Используем namespace UUID для генерации детерминированного UUID
-    const namespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
-    return uuidv5(nextAuthId, namespace)
-  }
-
   useEffect(() => {
     async function fetchUserAndAds() {
-      // Проверяем аутентификацию через NextAuth
-      if (status === "loading") return
+      // Проверяем аутентификацию через Supabase
+      if (authLoading) return
       
-      if (!session?.user) {
+      if (!isAuthenticated || !user) {
         router.push("/auth")
         return
       }
 
       // Получаем объявления пользователя из Supabase
       if (supabase) {
-        const generatedUserId = generateUserId(session.user.id)
         const { data: pets, error: petsError } = await supabase
           .from("pets")
           .select("*")
-          .eq("user_id", generatedUserId)
+          .eq("user_id", user.id)
         setAds(pets || [])
       }
       setLoading(false)
     }
     fetchUserAndAds()
-  }, [session, status, router])
+  }, [user, authLoading, isAuthenticated, router])
 
   const handleSort = (value: string) => {
     setSort(value)
@@ -68,7 +58,7 @@ export default function CabinetPage() {
         },
         body: JSON.stringify({
           petId: id,
-          userId: session?.user?.id,
+          userId: user?.id,
           status: "archived"
         }),
       })
@@ -95,7 +85,7 @@ export default function CabinetPage() {
         },
         body: JSON.stringify({
           petId: id,
-          userId: session?.user?.id,
+          userId: user?.id,
           status: "active"
         }),
       })
@@ -117,7 +107,7 @@ export default function CabinetPage() {
     router.push(`/add?id=${id}`)
   }
 
-  const isAdmin = session?.user?.email === 'agentgl007@gmail.com'
+  const isAdmin = user?.email === 'agentgl007@gmail.com'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50">
@@ -132,7 +122,6 @@ export default function CabinetPage() {
                 </Button>
               </Link>
             )}
-            <span className="text-orange-600 font-medium">{session?.user?.email}</span>
           </div>
         </div>
       </header>

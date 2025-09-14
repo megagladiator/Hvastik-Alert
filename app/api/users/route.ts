@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getAllUsers, updateUserStatus, deleteUser as firebaseDeleteUser } from '@/lib/firebase-admin'
+import { supabaseServer } from '@/lib/supabase-server'
 
 // Локальное хранилище ролей пользователей (в продакшене используйте базу данных)
 const userRoles: Record<string, 'admin' | 'user'> = {
@@ -19,15 +17,28 @@ function setUserRole(email: string, role: 'admin' | 'user'): void {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    // Получаем токен из заголовков
+    const authHeader = request.headers.get('authorization')
+    console.log('Auth header:', authHeader)
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('No valid auth header')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
+    console.log('Token received:', token.substring(0, 20) + '...')
     
-    if (!session?.user) {
+    // Проверяем токен через Supabase
+    const { data: { user }, error: authError } = await supabaseServer.auth.getUser(token)
+    console.log('Auth result:', { user: user?.email, error: authError })
+    
+    if (authError || !user) {
+      console.log('Auth failed:', authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Проверяем, что пользователь - администратор
-    const currentUserRole = getUserRole(session.user.email!)
-    if (currentUserRole !== 'admin') {
+    if (user.email !== 'agentgl007@gmail.com') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -36,19 +47,26 @@ export async function GET(request: NextRequest) {
     const role = searchParams.get('role')
     const status = searchParams.get('status')
 
-    // Получаем всех пользователей из Firebase
-    const firebaseUsers = await getAllUsers()
+    // Получаем всех пользователей из Supabase
+    console.log('Fetching users from Supabase...')
+    const { data: supabaseUsers, error: usersError } = await supabaseServer.auth.admin.listUsers()
+    console.log('Users fetch result:', { count: supabaseUsers?.users?.length, error: usersError })
+    
+    if (usersError) {
+      console.error('Error fetching users:', usersError)
+      return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
+    }
     
     // Преобразуем в наш формат
-    let users = firebaseUsers.map(user => ({
-      id: user.uid,
+    let users = supabaseUsers.users.map(user => ({
+      id: user.id,
       email: user.email || '',
-      name: user.displayName || user.email || '',
+      name: user.user_metadata?.name || user.email || '',
       role: getUserRole(user.email || ''),
-      status: user.disabled ? 'banned' : 'active',
-      emailVerified: user.emailVerified,
-      createdAt: new Date(user.metadata.creationTime),
-      lastLoginAt: user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime) : null,
+      status: user.banned_until ? 'banned' : 'active',
+      emailVerified: !!user.email_confirmed_at,
+      createdAt: new Date(user.created_at),
+      lastLoginAt: user.last_sign_in_at ? new Date(user.last_sign_in_at) : null,
     }))
 
     // Фильтрация
@@ -78,52 +96,30 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Проверяем, что пользователь - администратор
-    const currentUserRole = getUserRole(session.user.email!)
-    if (currentUserRole !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
-    const body = await request.json()
-    const { email, name, role, status } = body
-
-    // Проверяем, что пользователь с таким email не существует в Firebase
-    const firebaseUsers = await getAllUsers()
-    const existingUser = firebaseUsers.find(u => u.email === email)
-    if (existingUser) {
-      return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 })
-    }
-
-    // Создание пользователей через Firebase Admin SDK не поддерживается напрямую
-    // Пользователи должны регистрироваться через клиентскую часть
-    return NextResponse.json({ 
-      error: 'User creation through admin panel is not supported. Users must register through the client application.' 
-    }, { status: 400 })
-
-  } catch (error: any) {
-    console.error('API error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  return NextResponse.json({ 
+    error: 'User creation through admin panel is not supported. Users must register through the client application.' 
+  }, { status: 400 })
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    // Получаем токен из заголовков
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
     
-    if (!session?.user) {
+    // Проверяем токен через Supabase
+    const { data: { user }, error: authError } = await supabaseServer.auth.getUser(token)
+    
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Проверяем, что пользователь - администратор
-    const currentUserRole = getUserRole(session.user.email!)
-    if (currentUserRole !== 'admin') {
+    if (user.email !== 'agentgl007@gmail.com') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -135,33 +131,20 @@ export async function PUT(request: NextRequest) {
       setUserRole(email, role)
     }
 
-    // Обновляем статус пользователя в Firebase
+    // Обновляем статус пользователя в Supabase
     if (status) {
-      const disabled = status === 'banned'
-      await updateUserStatus(id, disabled)
-    }
-
-    // Получаем обновленную информацию о пользователе
-    const firebaseUsers = await getAllUsers()
-    const updatedUser = firebaseUsers.find(u => u.uid === id)
-    
-    if (!updatedUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    const user = {
-      id: updatedUser.uid,
-      email: updatedUser.email || '',
-      name: updatedUser.displayName || updatedUser.email || '',
-      role: getUserRole(updatedUser.email || ''),
-      status: updatedUser.disabled ? 'banned' : 'active',
-      emailVerified: updatedUser.emailVerified,
-      createdAt: new Date(updatedUser.metadata.creationTime),
-      lastLoginAt: updatedUser.metadata.lastSignInTime ? new Date(updatedUser.metadata.lastSignInTime) : null,
+      const banned = status === 'banned'
+      const { error: updateError } = await supabaseServer.auth.admin.updateUserById(id, {
+        ban_duration: banned ? '876000h' : 'none' // 100 лет для бана
+      })
+      
+      if (updateError) {
+        console.error('Error updating user status:', updateError)
+        return NextResponse.json({ error: 'Failed to update user status' }, { status: 500 })
+      }
     }
 
     return NextResponse.json({
-      user,
       message: 'User updated successfully'
     })
 
@@ -173,15 +156,23 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    // Получаем токен из заголовков
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
     
-    if (!session?.user) {
+    // Проверяем токен через Supabase
+    const { data: { user }, error: authError } = await supabaseServer.auth.getUser(token)
+    
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Проверяем, что пользователь - администратор
-    const currentUserRole = getUserRole(session.user.email!)
-    if (currentUserRole !== 'admin') {
+    if (user.email !== 'agentgl007@gmail.com') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -192,25 +183,17 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    // Получаем информацию о пользователе перед удалением
-    const firebaseUsers = await getAllUsers()
-    const userToDelete = firebaseUsers.find(u => u.uid === id)
-    
-    if (!userToDelete) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
     // Не позволяем удалять самого себя
-    if (userToDelete.email === session.user.email) {
+    if (id === user.id) {
       return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 })
     }
 
-    // Удаляем пользователя из Firebase
-    await firebaseDeleteUser(id)
-
-    // Удаляем роль из локального хранилища
-    if (userToDelete.email) {
-      delete userRoles[userToDelete.email]
+    // Удаляем пользователя из Supabase
+    const { error: deleteError } = await supabaseServer.auth.admin.deleteUser(id)
+    
+    if (deleteError) {
+      console.error('Error deleting user:', deleteError)
+      return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 })
     }
 
     return NextResponse.json({

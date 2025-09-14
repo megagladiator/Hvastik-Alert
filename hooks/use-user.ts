@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSupabaseSession } from './use-supabase-session'
+import { supabase } from '@/lib/supabase'
 
 export interface User {
   id: string
@@ -21,22 +22,22 @@ export interface UserFilters {
 }
 
 export function useUser() {
-  const { data: session, status } = useSession()
+  const { user: supabaseUser, loading: authLoading, isAuthenticated } = useSupabaseSession()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (status === 'loading') return
+    if (authLoading) return
 
-    if (!session?.user) {
+    if (!isAuthenticated || !supabaseUser) {
       setUser(null)
       setLoading(false)
       return
     }
 
     fetchUser()
-  }, [session, status])
+  }, [supabaseUser, authLoading, isAuthenticated])
 
   const fetchUser = async () => {
     try {
@@ -73,31 +74,60 @@ export function useUser() {
 }
 
 export function useUsers(filters?: UserFilters) {
+  const { user: supabaseUser, loading: authLoading, isAuthenticated } = useSupabaseSession()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (authLoading) return
+    
+    if (!isAuthenticated || !supabaseUser) {
+      setUsers([])
+      setLoading(false)
+      return
+    }
+
     fetchUsers()
-  }, [filters])
+  }, [filters, supabaseUser, authLoading, isAuthenticated])
 
   const fetchUsers = async () => {
     try {
       setLoading(true)
       setError(null)
 
+      // Получаем токен из Supabase
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('Session in useUsers:', session)
+      if (!session?.access_token) {
+        console.error('No access token available in useUsers')
+        throw new Error('No access token available')
+      }
+
       const params = new URLSearchParams()
       if (filters?.email) params.append('email', filters.email)
       if (filters?.role) params.append('role', filters.role)
       if (filters?.status) params.append('status', filters.status)
 
-      const response = await fetch(`/api/users?${params.toString()}`)
+      console.log('Making API request to:', `/api/users?${params.toString()}`)
+      console.log('With token:', session.access_token.substring(0, 20) + '...')
+      
+      const response = await fetch(`/api/users?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+      
+      console.log('API response status:', response.status)
       
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API error response:', errorText)
         throw new Error('Failed to fetch users')
       }
 
       const data = await response.json()
+      console.log('API response data:', data)
       setUsers(data.users)
     } catch (err: any) {
       setError(err.message)
@@ -109,10 +139,16 @@ export function useUsers(filters?: UserFilters) {
 
   const createUser = async (userData: Partial<User>) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('No access token available')
+      }
+
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify(userData),
       })
@@ -133,10 +169,16 @@ export function useUsers(filters?: UserFilters) {
 
   const updateUser = async (id: string, userData: Partial<User>) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('No access token available')
+      }
+
       const response = await fetch('/api/users', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({ id, ...userData }),
       })
@@ -157,8 +199,16 @@ export function useUsers(filters?: UserFilters) {
 
   const deleteUser = async (id: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('No access token available')
+      }
+
       const response = await fetch(`/api/users?id=${id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
       })
 
       if (!response.ok) {
