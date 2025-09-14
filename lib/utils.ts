@@ -24,18 +24,23 @@ export function getAppBaseUrl(): string {
     return 'http://localhost:3000'
   }
   
-  // Fallback для продакшена - используем Vercel домен
-  return 'https://v0-hvastik-alert-project-git-main-agentgl007-7440s-projects.vercel.app'
+  // Fallback для продакшена - используем VERCEL_URL
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  
+  // Последний fallback - используем домен из переменной окружения
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL
+  }
+  
+  // Если ничего не найдено, возвращаем localhost
+  return 'http://localhost:3000'
 }
 
 /**
  * Получает URL для подтверждения email
  */
 export function getEmailVerificationUrl(): string {
-  // Хардкод для продакшена, пока не исправим проблему с переменными
-  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
-    return 'https://v0-hvastik-alert-project-git-main-agentgl007-7440s-projects.vercel.app/auth/verify-email'
-  }
-  
   return `${getAppBaseUrl()}/auth/verify-email`
 }
