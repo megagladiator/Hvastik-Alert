@@ -38,7 +38,7 @@ export default function RegisterPage() {
       // Отправляем письмо подтверждения через Firebase с правильным URL
       await sendEmailVerification(userCredential.user, {
         url: getEmailVerificationUrl(),
-        handleCodeInApp: true, // Для мобильных приложений, но работает и в веб
+        handleCodeInApp: false, // Для веб-приложений
       })
       
       console.log("Письмо подтверждения отправлено на:", email)
