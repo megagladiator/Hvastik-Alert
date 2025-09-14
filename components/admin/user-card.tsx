@@ -15,7 +15,7 @@ import {
   Trash2,
   MoreVertical
 } from "lucide-react"
-import { User as UserType, UserRole, UserStatus } from "@/types/user"
+import { User as UserType } from "@/hooks/use-user"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,8 +35,8 @@ import {
 
 interface UserCardProps {
   user: UserType
-  onRoleChange: (userId: string, role: UserRole) => void
-  onStatusChange: (userId: string, status: UserStatus) => void
+  onRoleChange: (userId: string, role: 'admin' | 'user') => void
+  onStatusChange: (userId: string, status: 'active' | 'inactive' | 'banned') => void
   onDelete: (userId: string) => void
 }
 
@@ -44,41 +44,50 @@ export default function UserCard({ user, onRoleChange, onStatusChange, onDelete 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+  const formatDate = (date: Date | string) => {
+    if (!date) return 'Не указано'
+    
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date
+      if (isNaN(dateObj.getTime())) return 'Неверная дата'
+      
+      return dateObj.toLocaleDateString('ru-RU', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch (error) {
+      return 'Ошибка даты'
+    }
   }
 
-  const getStatusBadge = (status: UserStatus) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case UserStatus.ACTIVE:
+      case 'active':
         return <Badge className="bg-green-100 text-green-800">Активный</Badge>
-      case UserStatus.BLOCKED:
+      case 'banned':
         return <Badge className="bg-red-100 text-red-800">Заблокирован</Badge>
-      case UserStatus.PENDING:
-        return <Badge className="bg-yellow-100 text-yellow-800">Ожидает</Badge>
+      case 'inactive':
+        return <Badge className="bg-yellow-100 text-yellow-800">Неактивный</Badge>
       default:
         return <Badge variant="secondary">Неизвестно</Badge>
     }
   }
 
-  const getRoleBadge = (role: UserRole) => {
+  const getRoleBadge = (role: string) => {
     switch (role) {
-      case UserRole.ADMIN:
+      case 'admin':
         return <Badge className="bg-purple-100 text-purple-800">Администратор</Badge>
-      case UserRole.USER:
+      case 'user':
         return <Badge className="bg-blue-100 text-blue-800">Пользователь</Badge>
       default:
         return <Badge variant="secondary">Неизвестно</Badge>
     }
   }
 
-  const handleRoleChange = async (newRole: UserRole) => {
+  const handleRoleChange = async (newRole: 'admin' | 'user') => {
     if (newRole === user.role) return
     
     setIsLoading(true)
@@ -89,7 +98,7 @@ export default function UserCard({ user, onRoleChange, onStatusChange, onDelete 
     }
   }
 
-  const handleStatusChange = async (newStatus: UserStatus) => {
+  const handleStatusChange = async (newStatus: 'active' | 'inactive' | 'banned') => {
     if (newStatus === user.status) return
     
     setIsLoading(true)
@@ -105,6 +114,37 @@ export default function UserCard({ user, onRoleChange, onStatusChange, onDelete 
     try {
       await onDelete(user.id)
       setShowDeleteDialog(false)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSendVerification = async (email: string) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/users/send-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to send verification')
+      }
+
+      const data = await response.json()
+      
+      // В реальном приложении здесь должна быть отправка письма
+      // Пока просто показываем ссылку в консоли
+      console.log('Verification link:', data.link)
+      
+      alert(`Ссылка для подтверждения email отправлена на ${email}`)
+    } catch (error: any) {
+      console.error('Ошибка отправки подтверждения:', error)
+      alert(`Ошибка: ${error.message}`)
     } finally {
       setIsLoading(false)
     }
@@ -137,11 +177,11 @@ export default function UserCard({ user, onRoleChange, onStatusChange, onDelete 
               <DropdownMenuContent align="end">
                 <DropdownMenuItem 
                   onClick={() => handleRoleChange(
-                    user.role === UserRole.ADMIN ? UserRole.USER : UserRole.ADMIN
+                    user.role === 'admin' ? 'user' : 'admin'
                   )}
                   disabled={isLoading}
                 >
-                  {user.role === UserRole.ADMIN ? (
+                  {user.role === 'admin' ? (
                     <>
                       <Shield className="h-4 w-4 mr-2" />
                       Сделать пользователем
@@ -156,11 +196,11 @@ export default function UserCard({ user, onRoleChange, onStatusChange, onDelete 
                 
                 <DropdownMenuItem 
                   onClick={() => handleStatusChange(
-                    user.status === UserStatus.ACTIVE ? UserStatus.BLOCKED : UserStatus.ACTIVE
+                    user.status === 'active' ? 'banned' : 'active'
                   )}
                   disabled={isLoading}
                 >
-                  {user.status === UserStatus.ACTIVE ? (
+                  {user.status === 'active' ? (
                     <>
                       <Ban className="h-4 w-4 mr-2" />
                       Заблокировать
@@ -172,6 +212,16 @@ export default function UserCard({ user, onRoleChange, onStatusChange, onDelete 
                     </>
                   )}
                 </DropdownMenuItem>
+                
+                {!user.emailVerified && (
+                  <DropdownMenuItem 
+                    onClick={() => handleSendVerification(user.email)}
+                    disabled={isLoading}
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Отправить подтверждение email
+                  </DropdownMenuItem>
+                )}
                 
                 <DropdownMenuItem 
                   onClick={() => setShowDeleteDialog(true)}
@@ -191,22 +241,22 @@ export default function UserCard({ user, onRoleChange, onStatusChange, onDelete 
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-gray-400" />
               <span className="text-gray-600">Email подтвержден:</span>
-              <span className={user.email_confirmed ? "text-green-600" : "text-red-600"}>
-                {user.email_confirmed ? "Да" : "Нет"}
+              <span className={user.emailVerified ? "text-green-600" : "text-red-600"}>
+                {user.emailVerified ? "Да" : "Нет"}
               </span>
             </div>
             
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-gray-400" />
               <span className="text-gray-600">Регистрация:</span>
-              <span>{formatDate(user.created_at)}</span>
+              <span>{formatDate(user.createdAt)}</span>
             </div>
             
-            {user.last_sign_in && (
+            {user.lastLoginAt && (
               <div className="flex items-center gap-2 col-span-2">
                 <Calendar className="h-4 w-4 text-gray-400" />
                 <span className="text-gray-600">Последний вход:</span>
-                <span>{formatDate(user.last_sign_in)}</span>
+                <span>{formatDate(user.lastLoginAt)}</span>
               </div>
             )}
           </div>
