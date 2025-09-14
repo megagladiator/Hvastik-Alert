@@ -19,7 +19,7 @@ import {
   Settings,
 } from "lucide-react"
 import Link from "next/link"
-import { useSession } from "next-auth/react"
+import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { safeSupabase as supabase } from "@/lib/supabase" // Use safeSupabase
 import PetMap from "@/components/pet-map"
 import { VersionInfo } from "@/components/version-info"
@@ -74,8 +74,8 @@ export default function HomePage() {
     console.log(`🎨 УСТАНОВКА ФОНА: ${url} (причина: ${reason})`)
     setBackgroundImageUrl(url)
   }
-  // NextAuth.js session
-  const { data: session, status } = useSession()
+  // Supabase session
+  const { user, loading: authLoading, isAuthenticated } = useSupabaseSession()
 
   const testimonials: Testimonial[] = [
     {
@@ -431,28 +431,25 @@ export default function HomePage() {
                     Поиск
                   </div>
                 </Link>
-                {session?.user && (
-                  <>
-                    <Link 
-                      href="/cabinet" 
-                      className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
-                        Личный кабинет
-                      </div>
-                    </Link>
-                    <Link 
-                      href="/chats" 
-                      className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
-                    >
-                      <div className="flex items-center gap-2">
-                        <MessageCircle className="h-4 w-4" />
-                        Мои чаты
-                      </div>
-                    </Link>
-                  </>
-                )}
+                {/* Временно показываем кнопки всегда для тестирования */}
+                <Link 
+                  href="/cabinet" 
+                  className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Личный кабинет
+                  </div>
+                </Link>
+                <Link 
+                  href="/chats" 
+                  className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
+                >
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Мои чаты
+                  </div>
+                </Link>
                 <Link 
                   href="/add?type=lost" 
                   className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-white hover:from-orange-600 hover:to-orange-700 font-medium"
