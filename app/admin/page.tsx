@@ -10,7 +10,9 @@ import { useRouter } from "next/navigation"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import BackgroundImageSettings from "@/components/admin/background-settings"
 import UserList from "@/components/admin/user-list"
-import { Settings, Users, Database, ImageIcon, Home } from "lucide-react"
+import DatabaseStats from "@/components/admin/database-stats"
+import DatabaseTables from "@/components/admin/database-tables"
+import { Settings, Users, Database, ImageIcon, Home, Table } from "lucide-react"
 
 export default function AdminPage() {
   const { user, loading, isAuthenticated } = useSupabaseSession()
@@ -109,7 +111,15 @@ export default function AdminPage() {
             className={activeTab === "database" ? "bg-orange-500 hover:bg-orange-600" : ""}
           >
             <Database className="h-4 w-4 mr-2" />
-            База данных
+            Статистика БД
+          </Button>
+          <Button
+            variant={activeTab === "tables" ? "default" : "outline"}
+            onClick={() => setActiveTab("tables")}
+            className={activeTab === "tables" ? "bg-orange-500 hover:bg-orange-600" : ""}
+          >
+            <Table className="h-4 w-4 mr-2" />
+            Таблицы БД
           </Button>
         </div>
 
@@ -137,18 +147,14 @@ export default function AdminPage() {
         )}
 
         {activeTab === "database" && (
-          <div className="max-w-4xl mx-auto">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5 text-orange-500" />
-                  Статистика базы данных
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Функция статистики базы данных будет добавлена в следующих версиях.</p>
-              </CardContent>
-            </Card>
+          <div className="max-w-7xl mx-auto">
+            <DatabaseStats />
+          </div>
+        )}
+
+        {activeTab === "tables" && (
+          <div className="max-w-7xl mx-auto">
+            <DatabaseTables />
           </div>
         )}
       </div>

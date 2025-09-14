@@ -61,6 +61,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Если это новое объявление (не редактирование), отправляем уведомление админу
+    if (!editId && data && data[0]) {
+      try {
+        // Получаем email пользователя из запроса
+        const userEmail = body.userEmail || null
+        
+        // Отправляем уведомление админу
+        const notifyResponse = await fetch(`${request.nextUrl.origin}/api/admin/notify-new-pet`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            petData: data[0],
+            userEmail: userEmail
+          })
+        })
+
+        if (!notifyResponse.ok) {
+          console.error('Failed to notify admin:', await notifyResponse.text())
+        } else {
+          console.log('Admin notification sent successfully')
+        }
+      } catch (notifyError) {
+        console.error('Error sending admin notification:', notifyError)
+        // Не блокируем создание объявления из-за ошибки уведомления
+      }
+    }
+
     return NextResponse.json({ data: data[0] })
   } catch (error: any) {
     console.error('API error:', error)

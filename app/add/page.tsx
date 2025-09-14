@@ -13,13 +13,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Upload, MapPin, Heart } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { safeSupabase as supabase } from "@/lib/supabase"
 import { v5 as uuidv5 } from 'uuid'
 
 export default function AddPetPage() {
   const router = useRouter()
-  const { data: session, status } = useSession()
+  const { user, loading: authLoading, isAuthenticated } = useSupabaseSession()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     type: "lost",
@@ -100,7 +100,7 @@ export default function AddPetPage() {
         reward: formData.reward ? Number.parseInt(formData.reward) : null,
         status: "active",
         created_at: new Date().toISOString(),
-        user_id: generateUserId((session?.user as any)?.id), // Генерируем UUID из NextAuth.js ID
+        user_id: user?.id, // Используем Supabase user ID
       }
 
       // Используем API route для сохранения
@@ -112,7 +112,8 @@ export default function AddPetPage() {
           },
           body: JSON.stringify({
             petData,
-            userId: (session?.user as any)?.id,
+            userId: user?.id,
+            userEmail: user?.email,
             editId: editId || null
           }),
         })
@@ -125,7 +126,7 @@ export default function AddPetPage() {
 
         if (editId) {
           alert("Объявление успешно обновлено!")
-        } else if (session?.user) {
+        } else if (user) {
           alert("Объявление успешно добавлено и привязано к вашему аккаунту!")
         } else {
           alert("Объявление успешно добавлено анонимно!")
@@ -135,7 +136,7 @@ export default function AddPetPage() {
         alert(`Ошибка при сохранении объявления: ${apiError.message}`)
       }
 
-      if (session?.user) {
+      if (user) {
         router.push("/cabinet")
       } else {
         router.push("/")
@@ -143,7 +144,7 @@ export default function AddPetPage() {
     } catch (error: any) {
       console.error("Error adding pet:", error)
       alert(`Произошла ошибка: ${error.message}`)
-      if (session?.user) {
+      if (user) {
         router.push("/cabinet")
       } else {
         router.push("/")
@@ -311,8 +312,8 @@ export default function AddPetPage() {
               Заполните информацию о питомце, чтобы другие пользователи могли помочь
             </p>
             <div className="mt-2 text-xs text-gray-500">
-              {session?.user?.email ? (
-                <>Вы добавляете объявление как: <span className="font-semibold">{session.user.email}</span></>
+              {user?.email ? (
+                <>Вы добавляете объявление как: <span className="font-semibold">{user.email}</span></>
               ) : (
                 <>Вы добавляете объявление <span className="font-semibold">анонимно</span></>
               )}
