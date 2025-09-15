@@ -141,6 +141,11 @@ export default function CabinetPage() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">Мои объявления</h2>
           <div className="flex items-center gap-4">
+            <Link href="/chats">
+              <Button variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-50">
+                💬 Мои чаты
+              </Button>
+            </Link>
             <Link href="/add">
               <Button className="bg-orange-500 hover:bg-orange-600 text-white">Добавить объявление</Button>
             </Link>

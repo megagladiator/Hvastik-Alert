@@ -20,6 +20,7 @@ interface Pet {
   breed: string
   contact_name: string
   contact_phone: string
+  contact_email?: string
   photo_url?: string
 }
 
@@ -29,10 +30,11 @@ export default function ChatPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [newMessage, setNewMessage] = useState("")
+  const [petError, setPetError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Используем хук для чата
-  const { messages, loading: chatLoading, sending, error, sendMessage } = useChat({
+  const { messages, loading: chatLoading, sending, error: chatError, sendMessage } = useChat({
     petId: params.id as string,
     currentUserId: user?.id,
   })
@@ -54,6 +56,7 @@ export default function ChatPage() {
           breed: "Лабрадор",
           contact_name: "Анна",
           contact_phone: "+7 (918) 123-45-67",
+          contact_email: "anna.petowner@example.com",
           photo_url: "/placeholder.svg?height=50&width=50",
         })
         setLoading(false)
@@ -68,32 +71,24 @@ export default function ChatPage() {
           .eq("id", params.id)
           .single()
 
-        if (petError) {
+        if (petError || !petData) {
           console.error("Error fetching pet:", petError)
-          // Fallback к демо данным
-          setPet({
-            id: params.id as string,
-            type: "lost",
-            name: "Рекс",
-            breed: "Лабрадор",
-            contact_name: "Анна",
-            contact_phone: "+7 (918) 123-45-67",
-            photo_url: "/placeholder.svg?height=50&width=50",
-          })
+          // Питомец не найден - перенаправляем на страницу поиска
+          window.location.href = "/search"
+          return
+        }
+
+        // Проверяем, что питомец активен
+        if (petData.status !== 'active') {
+          // Питомец архивирован или найден - показываем сообщение
+          setPet(null)
+          setPetError("Этот питомец больше не доступен для общения")
         } else {
           setPet(petData)
         }
       } catch (error) {
         console.error("Error:", error)
-        setPet({
-          id: params.id as string,
-          type: "lost",
-          name: "Рекс",
-          breed: "Лабрадор",
-          contact_name: "Анна",
-          contact_phone: "+7 (918) 123-45-67",
-          photo_url: "/placeholder.svg?height=50&width=50",
-        })
+        setPetError("Ошибка при загрузке информации о питомце")
       } finally {
         setLoading(false)
       }
@@ -125,7 +120,35 @@ export default function ChatPage() {
     })
   }
 
-  if (loading || !pet) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Загружаем чат...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (petError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Питомец недоступен</h2>
+          <p className="text-gray-600 mb-4">{petError}</p>
+          <Link href="/search">
+            <Button className="bg-orange-500 hover:bg-orange-600">
+              Найти других питомцев
+            </Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (!pet) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center">
         <div className="text-center">
@@ -204,7 +227,22 @@ export default function ChatPage() {
               <Heart className="h-5 w-5 mr-2 text-orange-500" />
               Чат с владельцем
             </CardTitle>
-            <p className="text-sm text-gray-600">Обсудите детали и договоритесь о встрече</p>
+            <p className="text-sm text-gray-600">
+              Обсудите детали и договоритесь о встрече
+            </p>
+            <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-800">
+                <strong>Получатель:</strong> {pet.contact_name} (владелец {pet.name})
+              </p>
+              {pet.contact_email && (
+                <p className="text-sm text-blue-700 mt-1">
+                  <strong>Email:</strong> {pet.contact_email}
+                </p>
+              )}
+              <p className="text-xs text-blue-600 mt-1">
+                Ваши сообщения отправляются владельцу питомца
+              </p>
+            </div>
           </CardHeader>
 
           <CardContent className="flex-1 flex flex-col p-0">
@@ -226,17 +264,26 @@ export default function ChatPage() {
                              ) : (
                  messages.map((message: any) => {
                    const isCurrentUser = message.sender_id === user?.id
+                   const senderName = isCurrentUser ? "Вы" : pet.contact_name
                    return (
                      <div key={message.id} className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}>
-                       <div
-                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                           isCurrentUser ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-900"
-                         }`}
-                       >
-                         <p className="text-sm">{message.text}</p>
-                         <p className={`text-xs mt-1 ${isCurrentUser ? "text-orange-100" : "text-gray-500"}`}>
-                           {formatTime(message.created_at)}
-                         </p>
+                       <div className={`max-w-xs lg:max-w-md ${isCurrentUser ? "items-end" : "items-start"} flex flex-col`}>
+                         {!isCurrentUser && (
+                           <p className="text-xs text-gray-500 mb-1 ml-1">{senderName}</p>
+                         )}
+                         <div
+                           className={`px-4 py-2 rounded-lg ${
+                             isCurrentUser ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-900"
+                           }`}
+                         >
+                           <p className="text-sm">{message.text}</p>
+                           <p className={`text-xs mt-1 ${isCurrentUser ? "text-orange-100" : "text-gray-500"}`}>
+                             {formatTime(message.created_at)}
+                           </p>
+                         </div>
+                         {isCurrentUser && (
+                           <p className="text-xs text-gray-500 mt-1 mr-1">Вы</p>
+                         )}
                        </div>
                      </div>
                    )
@@ -247,9 +294,9 @@ export default function ChatPage() {
 
             {/* Message Input */}
             <div className="border-t p-4">
-              {error && (
+              {chatError && (
                 <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">{error}</p>
+                  <p className="text-sm text-red-600">{chatError}</p>
                 </div>
               )}
               <form onSubmit={handleSendMessage} className="flex gap-2">

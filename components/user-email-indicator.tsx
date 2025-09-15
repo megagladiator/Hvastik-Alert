@@ -26,6 +26,24 @@ export function UserEmailIndicator() {
     
     return (
       <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => router.push("/chats")}
+            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+          >
+            💬 Чаты
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => router.push("/cabinet")}
+            className="text-green-600 border-green-200 hover:bg-green-50"
+          >
+            🏠 Кабинет
+          </Button>
+        </div>
         <div className="flex flex-col items-end">
           <span className="text-lg font-semibold text-amber-700">
             {user.user_metadata?.name || user.email}

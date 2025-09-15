@@ -79,7 +79,8 @@ export function PetMap({ pets }: PetMapProps) {
 
         // Инициализируем карту только один раз
         if (!mapInstanceRef.current && mapRef.current) {
-          mapInstanceRef.current = L.map(mapRef.current).setView([44.8951, 37.3142], 13)
+          // Устанавливаем центр на Анапу и масштаб как на скриншоте
+          mapInstanceRef.current = L.map(mapRef.current).setView([44.89, 37.32], 11)
 
           L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             attribution: "© OpenStreetMap contributors",
@@ -94,7 +95,14 @@ export function PetMap({ pets }: PetMapProps) {
         markersRef.current = []
 
         // Добавляем новые маркеры
-        pets.forEach((pet) => {
+        console.log('🗺️ PetMap получил данные:', pets.map(p => ({
+          name: p.name,
+          location: p.location,
+          lat: p.latitude,
+          lng: p.longitude
+        })))
+        
+        pets.forEach((pet, index) => {
           const icon = L.divIcon({
             html: `
               <div style="
@@ -118,6 +126,7 @@ export function PetMap({ pets }: PetMapProps) {
             iconAnchor: [16, 16],
           })
 
+          console.log(`🗺️ Создаем маркер для ${pet.name}: [${pet.latitude}, ${pet.longitude}]`)
           const marker = L.marker([pet.latitude, pet.longitude], { icon })
             .addTo(mapInstanceRef.current)
             .bindPopup(`
@@ -165,11 +174,17 @@ export function PetMap({ pets }: PetMapProps) {
           markersRef.current.push(marker)
         })
 
-        // Подгоняем карту под маркеры
-        if (pets.length > 0) {
-          const group = new L.featureGroup(markersRef.current)
-          mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1))
-        }
+        // Убираем автоматическую подгонку карты - пользователь сам управляет масштабом
+        console.log('🗺️ Маркеры добавлены, автоматическая подгонка отключена')
+        
+        // Убираем автоматическое центрирование - карта должна показывать весь регион Анапы
+        // const gostagaevskayaPet = pets.find(pet => 
+        //   pet.location && pet.location.toLowerCase().includes('гостагаевская')
+        // )
+        // if (gostagaevskayaPet) {
+        //   console.log(`🗺️ Найдено объявление для Гостагаевской, центрируем карту на [${gostagaevskayaPet.latitude}, ${gostagaevskayaPet.longitude}]`)
+        //   mapInstanceRef.current.setView([gostagaevskayaPet.latitude, gostagaevskayaPet.longitude], 14)
+        // }
       } catch (error) {
         console.error("Error loading Leaflet:", error)
       }
@@ -184,10 +199,10 @@ export function PetMap({ pets }: PetMapProps) {
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full rounded-b-lg" style={{ minHeight: "300px" }} />
 
-      {/* Легенда */}
+      {/* Легенда и кнопка сброса */}
       <div className="absolute top-4 right-4 bg-white p-3 rounded-lg shadow-md z-[1000]">
         <div className="text-sm font-medium mb-2">Легенда</div>
-        <div className="space-y-1">
+        <div className="space-y-1 mb-3">
           <div className="flex items-center gap-2 text-xs">
             <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs">
               🐾
@@ -201,6 +216,16 @@ export function PetMap({ pets }: PetMapProps) {
             <span>Найден</span>
           </div>
         </div>
+        <button
+          onClick={() => {
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.setView([44.89, 37.32], 11)
+            }
+          }}
+          className="w-full text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+        >
+          Сброс
+        </button>
       </div>
 
       {pets.length === 0 && (
