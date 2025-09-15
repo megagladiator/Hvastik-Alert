@@ -6,6 +6,7 @@ import { UserEmailIndicator } from "@/components/user-email-indicator"
 import SupabaseKeepAlive from "@/components/supabase-keep-alive"
 import { Providers } from "@/components/providers"
 import { Logo } from "@/components/logo"
+import { NotificationProvider } from "@/components/notification-provider"
 
 export const metadata: Metadata = {
   title: 'v0 App',
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               retryDelay: 10000 // 10 секунд
             }}
           />
+          <NotificationProvider />
         </Providers>
       </body>
     </html>

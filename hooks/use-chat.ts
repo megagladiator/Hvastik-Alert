@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
-import { supabaseAdmin } from "@/lib/supabase-admin"
 import { RealtimeChannel } from "@supabase/supabase-js"
 
 interface Message {
@@ -18,6 +17,9 @@ interface Chat {
   pet_id: string
   user_id: string
   owner_id: string
+  status: 'active' | 'archived' | 'deleted'
+  archived_at?: string
+  archived_by?: string
   created_at: string
   updated_at: string
 }
@@ -40,28 +42,21 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
     if (!supabase || !currentUserId) return
 
     try {
-      // Сначала пытаемся найти существующий чат
-      // Ищем чат где текущий пользователь либо user_id, либо owner_id
-      const { data: existingChat, error: findError } = await supabase
-        .from("chats")
-        .select(`
-          *,
-          pets!inner(
-            id,
-            status
-          )
-        `)
-        .eq("pet_id", petId)
-        .or(`user_id.eq.${currentUserId},owner_id.eq.${currentUserId}`)
-        .single()
+      // Сначала пытаемся найти существующий активный чат
+      const response = await fetch(`/api/chats?userId=${currentUserId}&petId=${petId}`)
+      
+      if (response.ok) {
+        const { data: existingChats } = await response.json()
+        const existingChat = existingChats?.find((chat: any) => 
+          chat.pet_id === petId && 
+          (chat.user_id === currentUserId || chat.owner_id === currentUserId) &&
+          chat.status === 'active'
+        )
 
-      if (existingChat) {
-        // Проверяем, что питомец все еще активен
-        if (existingChat.pets && existingChat.pets.status !== 'active') {
-          throw new Error("Питомец больше не доступен для общения")
+        if (existingChat) {
+          setChat(existingChat)
+          return existingChat
         }
-        setChat(existingChat)
-        return existingChat
       }
 
       // Если чат не найден, получаем информацию о питомце для создания чата
@@ -81,24 +76,30 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
       }
 
       // Проверяем, не является ли текущий пользователь владельцем питомца
+      // Но только если мы пытаемся создать НОВЫЙ чат
       if (pet.user_id === currentUserId) {
         throw new Error("Вы не можете создать чат с самим собой")
       }
 
-      // Создаем новый чат
-      const { data: newChat, error: createError } = await supabaseAdmin
-        .from("chats")
-        .insert({
-          pet_id: petId,
-          user_id: currentUserId,
-          owner_id: pet.user_id,
-        })
-        .select()
-        .single()
+      // Создаем новый чат через API
+      const createResponse = await fetch('/api/chats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          petId: petId,
+          userId: currentUserId,
+          ownerId: pet.user_id,
+        }),
+      })
 
-      if (createError) {
-        throw createError
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json()
+        throw new Error(errorData.error || 'Ошибка создания чата')
       }
+
+      const { data: newChat } = await createResponse.json()
 
       setChat(newChat)
       return newChat
@@ -111,25 +112,18 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
 
   // Загрузка сообщений
   const loadMessages = useCallback(async (chatId: string) => {
-    if (!supabase) return
-
     try {
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("chat_id", chatId)
-        .order("created_at", { ascending: true })
-
-      if (error) {
-        throw error
+      const response = await fetch(`/api/messages?chatId=${chatId}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("Error loading messages:", errorData)
+        setError("Ошибка при загрузке сообщений")
+        return
       }
 
+      const { data } = await response.json()
       setMessages(data || [])
-
-      // Отмечаем сообщения как прочитанные
-      if (data && data.length > 0) {
-        await supabase.rpc('mark_messages_as_read', { chat_id_param: chatId })
-      }
     } catch (err) {
       console.error("Error loading messages:", err)
       setError(err instanceof Error ? err.message : "Ошибка при загрузке сообщений")
@@ -176,19 +170,28 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
         const senderType = chat.owner_id === currentUserId ? "owner" : "user"
 
         // Отправляем в базу данных только если это не демо-чат
-        if (supabaseAdmin && !chat.id.startsWith('demo-')) {
-          const { data, error } = await supabaseAdmin.from("messages").insert({
-            chat_id: chat.id,
-            sender_id: currentUserId,
-            sender_type: senderType,
-            text,
-          }).select().single()
+        if (!chat.id.startsWith('demo-')) {
+          const response = await fetch('/api/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chatId: chat.id,
+              senderId: currentUserId,
+              senderType: senderType,
+              text: text,
+            }),
+          })
 
-          if (error) {
-            console.error("Error sending message to database:", error)
+          if (!response.ok) {
+            const errorData = await response.json()
+            console.error("Error sending message to database:", errorData)
             setError("Ошибка при отправке сообщения")
             return
           }
+
+          const { data } = await response.json()
 
           // Добавляем сообщение локально только если оно успешно сохранено в БД
           if (data) {
@@ -239,6 +242,7 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
           pet_id: petId,
           user_id: currentUserId || '',
           owner_id: 'demo-owner',
+          status: 'active',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

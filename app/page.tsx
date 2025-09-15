@@ -168,7 +168,7 @@ export default function HomePage() {
           // Используем fallback только при ошибке подключения к БД
           setBackgroundImageUrlWithLog("/view-cats-dogs-showing-friendship (1) — копия.jpg", "ошибка подключения к БД")
           console.log("🌙 Устанавливаем fallback белое затемнение: 30%")
-          setBackgroundDarkeningPercentage(30)
+            setBackgroundDarkeningPercentage(30)
             return
           } 
           
@@ -177,7 +177,7 @@ export default function HomePage() {
             
             // Используем данные из БД, только если они есть
             if (data.background_image_url) {
-              // Добавляем кэш-бастинг к URL изображения для принудительного обновления
+            // Добавляем кэш-бастинг к URL изображения для принудительного обновления
               const finalImageUrl = forceRefresh ? `${data.background_image_url}?t=${Date.now()}` : data.background_image_url
               setBackgroundImageUrlWithLog(finalImageUrl, `данные из БД${forceRefresh ? ' (принудительное обновление)' : ''}`)
             } else {
@@ -432,24 +432,24 @@ export default function HomePage() {
                   </div>
                 </Link>
                 {/* Временно показываем кнопки всегда для тестирования */}
-                <Link 
-                  href="/cabinet" 
-                  className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
-                >
-                  <div className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    Личный кабинет
-                  </div>
-                </Link>
-                <Link 
-                  href="/chats" 
-                  className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
-                >
-                  <div className="flex items-center gap-2">
-                    <MessageCircle className="h-4 w-4" />
-                    Мои чаты
-                  </div>
-                </Link>
+                    <Link 
+                      href="/cabinet" 
+                      className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        Личный кабинет
+                      </div>
+                    </Link>
+                    <Link 
+                      href="/chats" 
+                      className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
+                    >
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4" />
+                        Мои чаты
+                      </div>
+                    </Link>
                 <Link 
                   href="/add?type=lost" 
                   className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-white hover:from-orange-600 hover:to-orange-700 font-medium"

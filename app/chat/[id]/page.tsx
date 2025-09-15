@@ -12,6 +12,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { useChat } from "@/hooks/use-chat"
+import { useSession } from "next-auth/react"
 
 interface Pet {
   id: string
