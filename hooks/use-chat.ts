@@ -40,6 +40,7 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
 
     try {
       // Сначала пытаемся найти существующий чат
+      // Ищем чат где текущий пользователь либо user_id, либо owner_id
       const { data: existingChat, error: findError } = await supabase
         .from("chats")
         .select(`
@@ -50,7 +51,7 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
           )
         `)
         .eq("pet_id", petId)
-        .eq("user_id", currentUserId)
+        .or(`user_id.eq.${currentUserId},owner_id.eq.${currentUserId}`)
         .single()
 
       if (existingChat) {
@@ -76,6 +77,11 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
       // Проверяем, что питомец активен
       if (pet.status !== 'active') {
         throw new Error("Питомец больше не доступен для общения")
+      }
+
+      // Проверяем, не является ли текущий пользователь владельцем питомца
+      if (pet.user_id === currentUserId) {
+        throw new Error("Вы не можете создать чат с самим собой")
       }
 
       // Создаем новый чат
@@ -165,7 +171,8 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
 
       setSending(true)
       try {
-        const senderType = chat.user_id === currentUserId ? "user" : "owner"
+        // Определяем тип отправителя: если текущий пользователь - владелец питомца, то "owner", иначе "user"
+        const senderType = chat.owner_id === currentUserId ? "owner" : "user"
 
         // Отправляем в базу данных только если это не демо-чат
         if (supabase && !chat.id.startsWith('demo-')) {
