@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { RealtimeChannel } from "@supabase/supabase-js"
 
 interface Message {
@@ -85,7 +86,7 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
       }
 
       // Создаем новый чат
-      const { data: newChat, error: createError } = await supabase
+      const { data: newChat, error: createError } = await supabaseAdmin
         .from("chats")
         .insert({
           pet_id: petId,
@@ -175,8 +176,8 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
         const senderType = chat.owner_id === currentUserId ? "owner" : "user"
 
         // Отправляем в базу данных только если это не демо-чат
-        if (supabase && !chat.id.startsWith('demo-')) {
-          const { data, error } = await supabase.from("messages").insert({
+        if (supabaseAdmin && !chat.id.startsWith('demo-')) {
+          const { data, error } = await supabaseAdmin.from("messages").insert({
             chat_id: chat.id,
             sender_id: currentUserId,
             sender_type: senderType,
