@@ -1,11 +1,11 @@
 "use client"
 
-import { useSession } from "next-auth/react"
+import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
 export default function TestFlowPage() {
-  const { data: session, status } = useSession()
+  const { user, loading, isAuthenticated } = useSupabaseSession()
   const router = useRouter()
 
   return (
@@ -14,11 +14,11 @@ export default function TestFlowPage() {
       
       <div className="bg-gray-100 p-4 rounded-lg mb-6">
         <h2 className="text-lg font-semibold mb-2">Текущий статус:</h2>
-        <p><strong>Статус сессии:</strong> {status}</p>
-        {session?.user ? (
+        <p><strong>Статус загрузки:</strong> {loading ? 'Загрузка...' : 'Загружено'}</p>
+        {isAuthenticated && user ? (
           <div>
-            <p><strong>Email:</strong> {session.user.email}</p>
-            <p><strong>ID:</strong> {session.user.id}</p>
+            <p><strong>Email:</strong> {user.email}</p>
+            <p><strong>ID:</strong> {user.id}</p>
             <p className="text-green-600 font-semibold">✅ Пользователь аутентифицирован</p>
           </div>
         ) : (
@@ -40,7 +40,7 @@ export default function TestFlowPage() {
           
           <Button 
             onClick={() => router.push("/cabinet")}
-            disabled={!session?.user}
+            disabled={!isAuthenticated}
           >
             🏠 Личный кабинет
           </Button>
@@ -50,7 +50,7 @@ export default function TestFlowPage() {
           </Button>
         </div>
 
-        {session?.user && (
+        {isAuthenticated && user && (
           <div className="bg-green-50 p-4 rounded-lg border border-green-200">
             <h4 className="font-semibold text-green-800 mb-2">✅ Готово к тестированию!</h4>
             <p className="text-green-700">
@@ -65,7 +65,7 @@ export default function TestFlowPage() {
           </div>
         )}
 
-        {!session?.user && (
+        {!isAuthenticated && (
           <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
             <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Требуется аутентификация</h4>
             <p className="text-yellow-700">

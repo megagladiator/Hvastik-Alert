@@ -1,23 +1,15 @@
 "use client"
 
-import { useSession } from "next-auth/react"
+import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { safeSupabase as supabase } from "@/lib/supabase"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { v5 as uuidv5 } from 'uuid'
 
 export default function TestPetCreationPage() {
-  const { data: session, status } = useSession()
+  const { user, loading: authLoading, isAuthenticated } = useSupabaseSession()
   const [result, setResult] = useState<string>("")
   const [loading, setLoading] = useState(false)
-
-  // Функция для генерации UUID из NextAuth.js ID
-  const generateUserId = (nextAuthId: string | undefined): string | null => {
-    if (!nextAuthId) return null
-    const namespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
-    return uuidv5(nextAuthId, namespace)
-  }
 
   const testPetCreation = async () => {
     setLoading(true)
@@ -40,11 +32,11 @@ export default function TestPetCreationPage() {
         photo_url: "https://example.com/test.jpg",
         status: "active" as const,
         created_at: new Date().toISOString(),
-        user_id: generateUserId(session?.user?.id)
+        user_id: user?.id
       }
 
-      console.log("Session data:", session)
-      console.log("User ID:", session?.user?.id)
+      console.log("User data:", user)
+      console.log("User ID:", user?.id)
       console.log("Pet data:", testPet)
 
       if (!supabaseAdmin) {
@@ -80,13 +72,13 @@ export default function TestPetCreationPage() {
       <h1 className="text-2xl font-bold mb-6">Тест создания объявления</h1>
       
       <div className="bg-gray-100 p-4 rounded-lg mb-6">
-        <h2 className="text-lg font-semibold mb-2">Информация о сессии:</h2>
-        <p><strong>Статус:</strong> {status}</p>
-        {session?.user ? (
+        <h2 className="text-lg font-semibold mb-2">Информация о пользователе:</h2>
+        <p><strong>Статус загрузки:</strong> {authLoading ? 'Загрузка...' : 'Загружено'}</p>
+        {isAuthenticated && user ? (
           <div>
-            <p><strong>Email:</strong> {session.user.email}</p>
-            <p><strong>ID:</strong> {session.user.id}</p>
-            <p><strong>Тип ID:</strong> {typeof session.user.id}</p>
+            <p><strong>Email:</strong> {user.email}</p>
+            <p><strong>ID:</strong> {user.id}</p>
+            <p><strong>Тип ID:</strong> {typeof user.id}</p>
           </div>
         ) : (
           <p>Пользователь не аутентифицирован</p>
@@ -96,7 +88,7 @@ export default function TestPetCreationPage() {
       <div className="mb-6">
         <Button 
           onClick={testPetCreation} 
-          disabled={loading || !session?.user}
+          disabled={loading || !isAuthenticated}
           className="bg-orange-500 hover:bg-orange-600"
         >
           {loading ? "Тестируем..." : "Тест создания объявления"}

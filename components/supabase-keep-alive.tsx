@@ -19,7 +19,7 @@ const DEFAULT_CONFIG: KeepAliveConfig = {
 
 export default function SupabaseKeepAlive({ 
   config = DEFAULT_CONFIG,
-  enableLogging = true 
+  enableLogging = process.env.NODE_ENV === 'development' 
 }: { 
   config?: Partial<KeepAliveConfig>
   enableLogging?: boolean 
@@ -120,17 +120,6 @@ export default function SupabaseKeepAlive({
     }
   }, [finalConfig, enableLogging])
 
-  // В режиме разработки показываем статус
-  if (process.env.NODE_ENV === 'development') {
-    return (
-      <div className="fixed bottom-4 right-4 bg-black/80 text-white text-xs p-2 rounded opacity-50 hover:opacity-100 transition-opacity">
-        <div>Keep-Alive: {isActive ? '🟢 Активен' : '🔴 Неактивен'}</div>
-        {lastPing && <div>Последний пинг: {lastPing.toLocaleTimeString()}</div>}
-        <div>Всего пингов: {pingCount}</div>
-      </div>
-    )
-  }
-
-  // В продакшене компонент не рендерит ничего видимого
+  // Компонент не рендерит ничего видимого (отладочная информация убрана)
   return null
 }
