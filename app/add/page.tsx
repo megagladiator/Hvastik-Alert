@@ -11,11 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Upload, MapPin, Heart } from "lucide-react"
-import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { safeSupabase as supabase } from "@/lib/supabase"
 import { v5 as uuidv5 } from 'uuid'
+import { uploadLocalImageToSupabase, isValidProductionUrl, getProductionPlaceholder, validateImage, validateImageDimensions, compressImage } from '@/lib/image-upload'
 
 export default function AddPetPage() {
   const router = useRouter()
@@ -41,6 +41,7 @@ export default function AddPetPage() {
 
   const searchParams = useSearchParams()
   const editId = searchParams.get("id")
+  const fromAdmin = searchParams.get("from") === "admin"
 
   // Функция для генерации UUID из NextAuth.js ID
   const generateUserId = (nextAuthId: string | undefined): string | null => {
@@ -95,12 +96,75 @@ export default function AddPetPage() {
     setLoading(true)
 
     try {
+      // Обрабатываем изображение для продакшена
+      let finalPhotoUrl = formData.photo_url
+      
+      // Если есть выбранный файл, но нет URL, значит файл был загружен через handleFileSelect
+      // и URL уже должен быть в formData.photo_url
+      if (selectedFile && !finalPhotoUrl) {
+        console.log('⚠️ Есть выбранный файл, но нет URL. Файл мог не загрузиться.')
+        // Попробуем загрузить файл заново
+        try {
+          const formDataUpload = new FormData()
+          formDataUpload.append('file', selectedFile)
+          
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formDataUpload,
+          })
+          
+          if (uploadResponse.ok) {
+            const result = await uploadResponse.json()
+            finalPhotoUrl = result.url
+            console.log('✅ Файл загружен повторно:', finalPhotoUrl)
+          }
+        } catch (error) {
+          console.error('❌ Ошибка повторной загрузки файла:', error)
+        }
+      }
+      
+      if (finalPhotoUrl) {
+        console.log('🖼️ Обработка изображения:', finalPhotoUrl)
+        
+        // Проверяем, подходит ли URL для продакшена
+        if (!isValidProductionUrl(finalPhotoUrl)) {
+          console.log('🔄 Загружаем изображение в Supabase Storage...')
+          
+          // Пытаемся загрузить в Supabase Storage
+          const uploadedUrl = await uploadLocalImageToSupabase(finalPhotoUrl)
+          
+          if (uploadedUrl) {
+            finalPhotoUrl = uploadedUrl
+            console.log('✅ Изображение загружено в Supabase Storage:', finalPhotoUrl)
+          } else {
+            // Если не удалось загрузить, используем placeholder
+            finalPhotoUrl = getProductionPlaceholder()
+            console.log('⚠️ Используем placeholder изображение:', finalPhotoUrl)
+          }
+        } else {
+          console.log('✅ URL подходит для продакшена:', finalPhotoUrl)
+        }
+      }
+      
+      console.log('🖼️ Финальный URL изображения:', {
+        originalUrl: formData.photo_url,
+        finalPhotoUrl: finalPhotoUrl,
+        selectedFile: selectedFile?.name
+      })
+
+      console.log('👤 Информация о пользователе:', {
+        userId: user?.id,
+        userEmail: user?.email,
+        isAuthenticated: !!user
+      })
+
       const petData = {
         ...formData,
         reward: formData.reward ? Number.parseInt(formData.reward) : null,
         status: "active",
         created_at: new Date().toISOString(),
         user_id: user?.id, // Используем Supabase user ID
+        photo_url: finalPhotoUrl, // Сохраняем photo_url
       }
 
       // Используем API route для сохранения
@@ -136,7 +200,10 @@ export default function AddPetPage() {
         alert(`Ошибка при сохранении объявления: ${apiError.message}`)
       }
 
-      if (user) {
+      // Редиректим в зависимости от того, откуда пришел пользователь
+      if (fromAdmin) {
+        router.push("/admin?tab=tables")
+      } else if (user) {
         router.push("/cabinet")
       } else {
         router.push("/")
@@ -144,7 +211,10 @@ export default function AddPetPage() {
     } catch (error: any) {
       console.error("Error adding pet:", error)
       alert(`Произошла ошибка: ${error.message}`)
-      if (user) {
+      // Редиректим в зависимости от того, откуда пришел пользователь
+      if (fromAdmin) {
+        router.push("/admin?tab=tables")
+      } else if (user) {
         router.push("/cabinet")
       } else {
         router.push("/")
@@ -160,85 +230,136 @@ export default function AddPetPage() {
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
-      setSelectedFile(file)
+    if (!file) return
+
+    try {
+      // Валидируем файл
+      const validation = validateImage(file)
+      if (!validation.valid) {
+        alert(`❌ ${validation.error}`)
+        return
+      }
+
+      // Валидируем размеры изображения
+      const dimensionValidation = await validateImageDimensions(file)
+      if (!dimensionValidation.valid) {
+        alert(`❌ ${dimensionValidation.error}`)
+        return
+      }
+
+      // Сжимаем изображение если нужно
+      let finalFile = file
+      if (file.size > 2 * 1024 * 1024) { // Если больше 2MB, сжимаем
+        console.log('🔄 Сжимаем изображение...')
+        finalFile = await compressImage(file)
+        console.log(`✅ Изображение сжато: ${(file.size / 1024 / 1024).toFixed(1)}MB → ${(finalFile.size / 1024 / 1024).toFixed(1)}MB`)
+      }
+
+      setSelectedFile(finalFile)
       
       // Создаем локальный предпросмотр
-      const url = URL.createObjectURL(file)
+      const url = URL.createObjectURL(finalFile)
       setPreviewUrl(url)
       
       // Загружаем файл в Supabase Storage
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-        
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        })
-        
-        const result = await response.json()
-        
-        if (response.ok) {
-          // Сохраняем URL из Supabase Storage
-          setFormData((prev) => ({ ...prev, photo_url: result.url }))
-          console.log('✅ Файл успешно загружен в Supabase:', result.url)
-        } else {
-          console.error('❌ Ошибка загрузки файла:', result.error)
-          console.log('📤 Ответ сервера:', result)
-          // Fallback: используем локальный URL
-          setFormData((prev) => ({ ...prev, photo_url: url }))
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки файла:', error)
-        // Fallback: используем локальный URL
-        setFormData((prev) => ({ ...prev, photo_url: url }))
+      const formData = new FormData()
+      formData.append('file', finalFile)
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok) {
+        // Сохраняем URL из Supabase Storage
+        setFormData((prev) => ({ ...prev, photo_url: result.url }))
+        console.log('✅ Файл успешно загружен в Supabase:', result.url)
+      } else {
+        console.error('❌ Ошибка загрузки файла:', result.error)
+        console.log('📤 Ответ сервера:', result)
+        alert('❌ Ошибка загрузки файла. Попробуйте другое изображение.')
       }
+    } catch (error) {
+      console.error('Ошибка обработки файла:', error)
+      alert('❌ Ошибка обработки файла. Попробуйте другое изображение.')
     }
   }
 
   const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     const file = event.dataTransfer.files[0]
-    if (file && file.type.startsWith('image/')) {
-      setSelectedFile(file)
+    if (!file || !file.type.startsWith('image/')) return
+
+    try {
+      // Валидируем файл
+      const validation = validateImage(file)
+      if (!validation.valid) {
+        alert(`❌ ${validation.error}`)
+        return
+      }
+
+      // Валидируем размеры изображения
+      const dimensionValidation = await validateImageDimensions(file)
+      if (!dimensionValidation.valid) {
+        alert(`❌ ${dimensionValidation.error}`)
+        return
+      }
+
+      // Сжимаем изображение если нужно
+      let finalFile = file
+      if (file.size > 2 * 1024 * 1024) { // Если больше 2MB, сжимаем
+        console.log('🔄 Сжимаем изображение...')
+        finalFile = await compressImage(file)
+        console.log(`✅ Изображение сжато: ${(file.size / 1024 / 1024).toFixed(1)}MB → ${(finalFile.size / 1024 / 1024).toFixed(1)}MB`)
+      }
+
+      setSelectedFile(finalFile)
       
       // Создаем локальный предпросмотр
-      const url = URL.createObjectURL(file)
+      const url = URL.createObjectURL(finalFile)
       setPreviewUrl(url)
       
       // Загружаем файл в Supabase Storage
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-        
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        })
-        
-        const result = await response.json()
-        
-        if (response.ok) {
-          // Сохраняем URL из Supabase Storage
-          setFormData((prev) => ({ ...prev, photo_url: result.url }))
-          console.log('✅ Файл успешно загружен в Supabase:', result.url)
-        } else {
-          console.error('❌ Ошибка загрузки файла:', result.error)
-          console.log('📤 Ответ сервера:', result)
-          // Fallback: используем локальный URL
-          setFormData((prev) => ({ ...prev, photo_url: url }))
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки файла:', error)
-        // Fallback: используем локальный URL
-        setFormData((prev) => ({ ...prev, photo_url: url }))
+      const formData = new FormData()
+      formData.append('file', finalFile)
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok) {
+        // Сохраняем URL из Supabase Storage
+        setFormData((prev) => ({ ...prev, photo_url: result.url }))
+        console.log('✅ Файл успешно загружен в Supabase:', result.url)
+      } else {
+        console.error('❌ Ошибка загрузки файла:', result.error)
+        console.log('📤 Ответ сервера:', result)
+        alert('❌ Ошибка загрузки файла. Попробуйте другое изображение.')
       }
+    } catch (error) {
+      console.error('Ошибка обработки файла:', error)
+      alert('❌ Ошибка обработки файла. Попробуйте другое изображение.')
     }
   }
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
+  }
+
+  const handleCancel = () => {
+    // Редиректим в зависимости от того, откуда пришел пользователь
+    if (fromAdmin) {
+      router.push("/admin?tab=tables")
+    } else if (user) {
+      router.push("/cabinet")
+    } else {
+      router.push("/")
+    }
   }
 
   const openFileDialog = () => {
@@ -478,6 +599,10 @@ export default function AddPetPage() {
               {/* Фото */}
               <div className="space-y-2">
                 <Label htmlFor="photo_url">Фото питомца</Label>
+                <p className="text-xs text-gray-500">
+                  Поддерживаемые форматы: JPEG, PNG, WebP, GIF. Максимальный размер: 5MB. 
+                  Рекомендуемое разрешение: 100x100 - 2048x2048px. Изображения больше 2MB будут автоматически сжаты.
+                </p>
                 
                 {/* Скрытый input для выбора файла */}
                 <input
@@ -541,6 +666,8 @@ export default function AddPetPage() {
                       if (e.target.value) {
                         setPreviewUrl(e.target.value)
                         setSelectedFile(null)
+                      } else {
+                        setPreviewUrl("")
                       }
                     }}
                     placeholder="https://example.com/photo.jpg"
@@ -551,11 +678,14 @@ export default function AddPetPage() {
 
               {/* Кнопки */}
               <div className="flex gap-4 pt-4">
-                <Link href="/" className="flex-1">
-                  <Button type="button" variant="outline" className="w-full bg-transparent">
-                    Отмена
-                  </Button>
-                </Link>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="flex-1 bg-transparent"
+                  onClick={handleCancel}
+                >
+                  Отмена
+                </Button>
                 <Button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600" disabled={loading}>
                   {editId ? (loading ? "Сохраняем..." : "Сохранить изменения") : (loading ? "Публикуем..." : "Опубликовать объявление")}
                 </Button>

@@ -43,6 +43,7 @@ interface Pet {
   created_at: string
   status: 'active' | 'found' | 'archived'
   user_id?: string
+  user_email?: string
 }
 
 interface User {
@@ -69,6 +70,9 @@ export default function DatabaseTables() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [userFilter, setUserFilter] = useState('all')
+  const [sortBy, setSortBy] = useState<'created_at' | 'name' | 'user_email'>('created_at')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const router = useRouter()
 
   const fetchData = async (table: string) => {
@@ -186,12 +190,48 @@ export default function DatabaseTables() {
     }
   }
 
-  const filteredPets = pets.filter(pet => 
-    pet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    pet.breed.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    pet.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    pet.contact_name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredPets = pets
+    .filter(pet => {
+      // Поиск по тексту
+      const matchesSearch = pet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        pet.breed.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        pet.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        pet.contact_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (pet.user_email && pet.user_email.toLowerCase().includes(searchTerm.toLowerCase()))
+      
+      // Фильтр по пользователю
+      const matchesUser = userFilter === 'all' || 
+        (userFilter === 'anonymous' && !pet.user_id) ||
+        (userFilter === 'registered' && pet.user_id) ||
+        (userFilter !== 'all' && userFilter !== 'anonymous' && userFilter !== 'registered' && pet.user_id === userFilter)
+      
+      return matchesSearch && matchesUser
+    })
+    .sort((a, b) => {
+      let aValue, bValue
+      
+      switch (sortBy) {
+        case 'name':
+          aValue = a.name.toLowerCase()
+          bValue = b.name.toLowerCase()
+          break
+        case 'user_email':
+          aValue = a.user_email || ''
+          bValue = b.user_email || ''
+          break
+        case 'created_at':
+        default:
+          aValue = new Date(a.created_at).getTime()
+          bValue = new Date(b.created_at).getTime()
+          break
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0
+      }
+    })
 
   const filteredUsers = users.filter(user => 
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -237,15 +277,59 @@ export default function DatabaseTables() {
         </Button>
       </div>
 
-      {/* Поиск */}
-      <div className="flex items-center gap-2">
-        <Search className="h-4 w-4 text-gray-500" />
-        <Input
-          placeholder={`Поиск в ${activeTable === 'pets' ? 'объявлениях' : activeTable === 'users' ? 'пользователях' : 'настройках'}...`}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
+      {/* Поиск и фильтры */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Search className="h-4 w-4 text-gray-500" />
+          <Input
+            placeholder={`Поиск в ${activeTable === 'pets' ? 'объявлениях' : activeTable === 'users' ? 'пользователях' : 'настройках'}...`}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+
+        {activeTable === 'pets' && (
+          <>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <select
+                value={userFilter}
+                onChange={(e) => setUserFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="all">Все пользователи</option>
+                <option value="registered">Зарегистрированные</option>
+                <option value="anonymous">Анонимные</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Сортировка:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="created_at">По дате</option>
+                <option value="name">По имени</option>
+                <option value="user_email">По пользователю</option>
+              </select>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              >
+                {sortOrder === 'asc' ? '↑' : '↓'}
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
       {error && (
@@ -283,6 +367,7 @@ export default function DatabaseTables() {
                       <TableHead>Имя</TableHead>
                       <TableHead>Порода</TableHead>
                       <TableHead>Местоположение</TableHead>
+                      <TableHead>Пользователь</TableHead>
                       <TableHead>Статус</TableHead>
                       <TableHead>Создано</TableHead>
                       <TableHead>Действия</TableHead>
@@ -296,6 +381,20 @@ export default function DatabaseTables() {
                         <TableCell className="font-medium">{pet.name}</TableCell>
                         <TableCell>{pet.breed}</TableCell>
                         <TableCell>{pet.location}</TableCell>
+                        <TableCell>
+                          {pet.user_id ? (
+                            <div className="text-sm">
+                              <div className="font-mono text-xs text-gray-500">
+                                {pet.user_id.slice(0, 8)}...
+                              </div>
+                              <div className="text-gray-600">
+                                {pet.user_email || 'Неизвестно'}
+                              </div>
+                            </div>
+                          ) : (
+                            <Badge variant="secondary">Анонимно</Badge>
+                          )}
+                        </TableCell>
                         <TableCell>{getStatusBadge(pet.status)}</TableCell>
                         <TableCell className="text-sm">{formatDate(pet.created_at)}</TableCell>
                         <TableCell>
@@ -310,7 +409,7 @@ export default function DatabaseTables() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => router.push(`/add?id=${pet.id}`)}
+                              onClick={() => router.push(`/add?id=${pet.id}&from=admin`)}
                             >
                               <Edit className="h-3 w-3" />
                             </Button>
