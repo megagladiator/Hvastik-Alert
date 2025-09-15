@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import BackgroundImageSettings from "@/components/admin/background-settings"
 import UserList from "@/components/admin/user-list"
@@ -18,6 +18,7 @@ export default function AdminPage() {
   const { user, loading, isAuthenticated } = useSupabaseSession()
   const [activeTab, setActiveTab] = useState<string>("settings")
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     // Проверяем аутентификацию через Supabase
@@ -34,7 +35,13 @@ export default function AdminPage() {
       router.push("/")
       return
     }
-  }, [user, loading, isAuthenticated, router])
+
+    // Устанавливаем активную вкладку из URL параметров
+    const tab = searchParams.get('tab')
+    if (tab && ['settings', 'users', 'database', 'tables', 'background'].includes(tab)) {
+      setActiveTab(tab)
+    }
+  }, [user, loading, isAuthenticated, router, searchParams])
 
   const isAdmin = user?.email === 'agentgl007@gmail.com'
 

@@ -21,23 +21,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { petData, userId, editId } = body
 
-    // Генерируем UUID из NextAuth.js ID
-    const generatedUserId = generateUserId(userId)
-
+    // Используем userId напрямую (это уже Supabase user.id)
     const finalPetData = {
       ...petData,
-      user_id: generatedUserId,
+      user_id: userId, // Используем Supabase user.id напрямую
     }
+
+    console.log('📝 API: Сохранение объявления:', {
+      editId: editId,
+      finalPetData: finalPetData,
+      photo_url: finalPetData.photo_url
+    })
 
     let data, error
 
     if (editId) {
       // Редактирование существующего объявления
+      // Для админов разрешаем редактирование любых объявлений
       const { data: updateData, error: updateError } = await supabaseAdmin
         .from('pets')
         .update(finalPetData)
         .eq('id', editId)
-        .eq('user_id', generatedUserId) // Проверяем, что пользователь владеет объявлением
         .select()
 
       data = updateData

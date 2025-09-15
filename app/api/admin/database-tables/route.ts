@@ -23,7 +23,27 @@ export async function GET(request: NextRequest) {
           .select('*')
           .order('created_at', { ascending: false })
         
-        data = petsData
+        // Получаем email пользователей отдельно
+        if (petsData && !petsError) {
+          const userIds = [...new Set(petsData.map(pet => pet.user_id).filter(Boolean))]
+          const userEmails: Record<string, string> = {}
+          
+          if (userIds.length > 0) {
+            const { data: usersData } = await supabaseServer.auth.admin.listUsers()
+            if (usersData?.users) {
+              usersData.users.forEach(user => {
+                userEmails[user.id] = user.email || ''
+              })
+            }
+          }
+          
+          data = petsData.map(pet => ({
+            ...pet,
+            user_email: pet.user_id ? userEmails[pet.user_id] || null : null
+          }))
+        } else {
+          data = petsData
+        }
         error = petsError
         break
 

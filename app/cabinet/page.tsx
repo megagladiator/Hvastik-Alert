@@ -30,10 +30,22 @@ export default function CabinetPage() {
 
       // Получаем объявления пользователя из Supabase
       if (supabase) {
+        console.log('🔍 Поиск объявлений для пользователя:', {
+          userId: user.id,
+          userEmail: user.email
+        })
+        
         const { data: pets, error: petsError } = await supabase
           .from("pets")
           .select("*")
           .eq("user_id", user.id)
+          
+        console.log('📋 Результат поиска объявлений:', {
+          pets: pets,
+          error: petsError,
+          count: pets?.length || 0
+        })
+        
         setAds(pets || [])
       }
       setLoading(false)
