@@ -29,8 +29,8 @@ export default function AddPetPage() {
     description: "",
     color: "",
     location: "",
-    latitude: 44.8951,
-    longitude: 37.3142,
+    latitude: 45.02063,
+    longitude: 37.50175,
     contact_phone: "",
     contact_name: "",
     reward: "",
@@ -65,8 +65,8 @@ export default function AddPetPage() {
             description: data.description || "",
             color: data.color || "",
             location: data.location || "",
-            latitude: data.latitude || 44.8951,
-            longitude: data.longitude || 37.3142,
+            latitude: data.latitude || 45.02063,
+            longitude: data.longitude || 37.50175,
             contact_phone: data.contact_phone || "",
             contact_name: data.contact_name || "",
             reward: data.reward?.toString() || "",
@@ -167,6 +167,14 @@ export default function AddPetPage() {
         photo_url: finalPhotoUrl, // Сохраняем photo_url
       }
 
+      console.log('💾 Сохраняем данные объявления:', {
+        name: petData.name,
+        location: petData.location,
+        latitude: petData.latitude,
+        longitude: petData.longitude,
+        editId: editId
+      })
+
       // Используем API route для сохранения
       try {
         const response = await fetch('/api/pets', {
@@ -226,6 +234,9 @@ export default function AddPetPage() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+    
+    // Убираем автоматический поиск адреса - только ручной поиск по кнопке
+    // Это предотвращает спам запросов при вводе текста
   }
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,22 +405,221 @@ export default function AddPetPage() {
     setFormData(prev => ({ ...prev, photo_url: "" }))
   }
 
-  const handleLocationSelect = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
+
+  // Функция для геокодирования адреса в координаты
+  const geocodeAddress = async (address: string) => {
+    console.log('🚀 geocodeAddress вызвана с адресом:', address)
+    
+    if (!address.trim()) {
+      console.log('⚠️ Пустой адрес для поиска')
+      alert('Введите адрес для поиска')
+      return
+    }
+
+    console.log('🔍 Начинаем универсальное геокодирование адреса:', address)
+
+    try {
+      const normalizedAddress = address.trim().replace(/\s+/g, ' ')
+      let found = false
+      
+      // Создаем массив вариантов поиска для максимального покрытия
+      const searchVariants = [
+        // Точный адрес
+        normalizedAddress,
+        // С добавлением региона
+        `${normalizedAddress}, Краснодарский край, Россия`,
+        `${normalizedAddress}, Россия`,
+        // Если это населенный пункт, добавляем "станица", "село", "хутор"
+        ...(isSettlementName(normalizedAddress) ? [
+          `станица ${normalizedAddress}, Краснодарский край, Россия`,
+          `село ${normalizedAddress}, Краснодарский край, Россия`,
+          `хутор ${normalizedAddress}, Краснодарский край, Россия`,
+          `поселок ${normalizedAddress}, Краснодарский край, Россия`
+        ] : []),
+        // Для улиц добавляем город
+        ...(normalizedAddress.includes('улица') || normalizedAddress.includes('ул.') || /^\d+/.test(normalizedAddress) ? [
+          `${normalizedAddress}, Анапа, Краснодарский край, Россия`,
+          `${normalizedAddress}, Новороссийск, Краснодарский край, Россия`
+        ] : [])
+      ]
+
+      console.log('🔍 Варианты поиска:', searchVariants)
+
+      // Пробуем каждый вариант поиска
+      for (const searchQuery of searchVariants) {
+        if (found) break
+        
+        console.log('🔍 Пробуем поиск:', searchQuery)
+        
+        try {
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&addressdetails=1&countrycodes=ru`
+          const response = await fetch(url)
+          
+          if (!response.ok) {
+            console.warn(`⚠️ HTTP error для "${searchQuery}": ${response.status}`)
+            continue
+          }
+          
+          const data = await response.json()
+          console.log('📡 Ответ от Nominatim для:', searchQuery, data)
+          
+          if (data && data.length > 0) {
+            const result = data[0]
+            setFormData((prev) => ({
+              ...prev,
+              latitude: parseFloat(result.lat),
+              longitude: parseFloat(result.lon),
+            }))
+            console.log('✅ Адрес найден через Nominatim:', {
+              originalAddress: address,
+              searchQuery: searchQuery,
+              lat: result.lat,
+              lon: result.lon,
+              displayName: result.display_name
+            })
+            alert(`✅ Адрес найден!\n${result.display_name}\nКоординаты: ${result.lat}, ${result.lon}`)
+            found = true
+            break
+          }
+        } catch (searchError) {
+          console.warn(`⚠️ Ошибка поиска для "${searchQuery}":`, searchError)
+          continue
+        }
+      }
+
+      // Если ни один вариант не сработал, используем умное определение по ключевым словам
+      if (!found) {
+        console.warn('⚠️ Адрес не найден через Nominatim, используем умное определение')
+        
+        const lowerAddress = normalizedAddress.toLowerCase()
+        let coordinates = null
+        let locationName = ''
+
+        // Определяем координаты по ключевым словам
+        if (lowerAddress.includes('гостагаевская')) {
+          coordinates = { lat: 45.02063, lng: 37.50175 }
+          locationName = 'Гостагаевская'
+        } else if (lowerAddress.includes('варениковская')) {
+          coordinates = { lat: 45.12085, lng: 37.64171 }
+          locationName = 'Варениковская'
+        } else if (lowerAddress.includes('натухаевская')) {
+          coordinates = { lat: 45.0, lng: 37.6 }
+          locationName = 'Натухаевская'
+        } else if (lowerAddress.includes('новороссийск')) {
+          coordinates = { lat: 44.7239, lng: 37.7708 }
+          locationName = 'Новороссийск'
+        } else if (lowerAddress.includes('анапа')) {
+          coordinates = { lat: 44.8951, lng: 37.3142 }
+          locationName = 'Анапа'
+        } else if (lowerAddress.includes('краснодар')) {
+          coordinates = { lat: 45.0448, lng: 38.976 }
+          locationName = 'Краснодар'
+        } else if (lowerAddress.includes('сочи')) {
+          coordinates = { lat: 43.5855, lng: 39.7231 }
+          locationName = 'Сочи'
+        } else if (lowerAddress.includes('геленджик')) {
+          coordinates = { lat: 44.5622, lng: 38.0768 }
+          locationName = 'Геленджик'
+        }
+
+        if (coordinates) {
           setFormData((prev) => ({
             ...prev,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
+            latitude: coordinates.lat,
+            longitude: coordinates.lng,
           }))
-          alert("Местоположение определено!")
-        },
-        (error) => {
-          console.error("Error getting location:", error)
-          alert("Не удалось определить местоположение")
-        },
+          console.log(`✅ Установлены координаты для ${locationName}:`, coordinates)
+          alert(`✅ Адрес не найден в базе, но установлены координаты для ${locationName}!\nКоординаты: ${coordinates.lat}, ${coordinates.lng}`)
+        } else {
+          console.log('❌ Адрес не найден и нет координат по умолчанию')
+          alert('❌ Адрес не найден. Попробуйте ввести более точный адрес или укажите известный город/станицу.')
+        }
+      }
+    } catch (error) {
+      console.error('❌ Ошибка геокодирования:', error)
+      alert('❌ Ошибка при поиске адреса. Попробуйте позже.')
+    }
+  }
+
+  // Функция для определения, является ли адрес названием населенного пункта
+  const isSettlementName = (address: string): boolean => {
+    const addressLower = address.toLowerCase().trim()
+    
+    // Ключевые слова для определения типа населенного пункта
+    const settlementTypes = [
+      'станица', 'село', 'хутор', 'поселок', 'деревня', 'аул'
+    ]
+    
+    // Названия населенных пунктов (нечувствительные к регистру)
+    const settlementNames = [
+      'гостагаевская', 'кастанаевская', 'витязево', 'анапа'
+    ]
+    
+    // Проверяем, содержит ли адрес тип населенного пункта
+    const hasSettlementType = settlementTypes.some(type => 
+      addressLower.includes(type)
+    )
+    
+    // Проверяем, содержит ли адрес название населенного пункта
+    const hasSettlementName = settlementNames.some(name => 
+      addressLower.includes(name)
+    )
+    
+    return hasSettlementType || hasSettlementName
+  }
+
+  // Функция для нормализации названий населенных пунктов
+  const normalizeSettlementName = (address: string): string => {
+    const addressLower = address.toLowerCase().trim()
+    
+    // Маппинг различных вариантов написания на стандартные названия
+    const settlementMapping: { [key: string]: string } = {
+      'гостагаевская': 'Гостагаевская',
+      'кастанаевская': 'Кастанаевская', 
+      'витязево': 'Витязево',
+      'анапа': 'Анапа'
+    }
+    
+    // Ищем совпадения в маппинге
+    for (const [key, value] of Object.entries(settlementMapping)) {
+      if (addressLower.includes(key)) {
+        return value
+      }
+    }
+    
+    // Если не найдено в маппинге, возвращаем исходный адрес с заглавной буквы
+    return address.trim().charAt(0).toUpperCase() + address.trim().slice(1).toLowerCase()
+  }
+
+  // Функция для поиска центра населенного пункта
+  const geocodeSettlement = async (settlementName: string): Promise<boolean> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(settlementName + ', Анапский район, Краснодарский край, Россия')}&limit=1&addressdetails=1&featuretype=settlement`
       )
+      
+      const data = await response.json()
+      
+      if (data && data.length > 0) {
+        const result = data[0]
+        setFormData((prev) => ({
+          ...prev,
+          latitude: parseFloat(result.lat),
+          longitude: parseFloat(result.lon),
+        }))
+        console.log('🏘️ Центр населенного пункта найден:', {
+          settlement: settlementName,
+          lat: result.lat,
+          lon: result.lon,
+          displayName: result.display_name
+        })
+        alert(`✅ Населенный пункт найден!\n${result.display_name}\nКоординаты: ${result.lat}, ${result.lon}`)
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('❌ Ошибка поиска центра населенного пункта:', error)
+      return false
     }
   }
 
@@ -546,12 +756,29 @@ export default function AddPetPage() {
                     required
                     className="flex-1"
                   />
-                  <Button type="button" variant="outline" onClick={handleLocationSelect}>
-                    <MapPin className="h-4 w-4" />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (formData.location.trim()) {
+                        geocodeAddress(formData.location)
+                      } else {
+                        alert('Введите адрес для поиска')
+                      }
+                    }}
+                    title="Найти адрес на карте"
+                    className="min-w-[40px]"
+                  >
+                    🔍
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500">
-                  Нажмите на кнопку с картой для определения текущего местоположения
+                  🔍 Нажмите кнопку поиска, чтобы найти адрес на карте
+                </p>
+                <p className="text-xs text-blue-600">
+                  📍 Координаты: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
                 </p>
               </div>
 

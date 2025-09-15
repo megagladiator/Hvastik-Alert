@@ -42,12 +42,22 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
       // Сначала пытаемся найти существующий чат
       const { data: existingChat, error: findError } = await supabase
         .from("chats")
-        .select("*")
+        .select(`
+          *,
+          pets!inner(
+            id,
+            status
+          )
+        `)
         .eq("pet_id", petId)
         .eq("user_id", currentUserId)
         .single()
 
       if (existingChat) {
+        // Проверяем, что питомец все еще активен
+        if (existingChat.pets && existingChat.pets.status !== 'active') {
+          throw new Error("Питомец больше не доступен для общения")
+        }
         setChat(existingChat)
         return existingChat
       }
@@ -55,12 +65,17 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
       // Если чат не найден, получаем информацию о питомце для создания чата
       const { data: pet, error: petError } = await supabase
         .from("pets")
-        .select("user_id")
+        .select("user_id, status")
         .eq("id", petId)
         .single()
 
       if (petError || !pet) {
         throw new Error("Питомец не найден")
+      }
+
+      // Проверяем, что питомец активен
+      if (pet.status !== 'active') {
+        throw new Error("Питомец больше не доступен для общения")
       }
 
       // Создаем новый чат
@@ -130,7 +145,12 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
         },
         (payload) => {
           const newMessage = payload.new as Message
-          setMessages((prev) => [...prev, newMessage])
+          setMessages((prev) => {
+            // Проверяем, нет ли уже такого сообщения (избегаем дубликатов)
+            const exists = prev.some(msg => msg.id === newMessage.id)
+            if (exists) return prev
+            return [...prev, newMessage]
+          })
         }
       )
       .subscribe()
@@ -147,37 +167,46 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
       try {
         const senderType = chat.user_id === currentUserId ? "user" : "owner"
 
-        // Создаем локальное сообщение для мгновенного отображения
-        const localMessage: Message = {
-          id: `local-${Date.now()}`,
-          chat_id: chat.id,
-          sender_id: currentUserId,
-          sender_type: senderType,
-          text: text,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-
-        // Добавляем сообщение локально для мгновенного отображения
-        setMessages(prev => [...prev, localMessage])
-
         // Отправляем в базу данных только если это не демо-чат
         if (supabase && !chat.id.startsWith('demo-')) {
-          const { error } = await supabase.from("messages").insert({
+          const { data, error } = await supabase.from("messages").insert({
             chat_id: chat.id,
             sender_id: currentUserId,
             sender_type: senderType,
             text,
-          })
+          }).select().single()
 
           if (error) {
             console.error("Error sending message to database:", error)
-            // Не показываем ошибку пользователю, так как сообщение уже отображается локально
+            setError("Ошибка при отправке сообщения")
+            return
           }
+
+          // Добавляем сообщение локально только если оно успешно сохранено в БД
+          if (data) {
+            setMessages(prev => {
+              // Проверяем, нет ли уже такого сообщения (избегаем дубликатов)
+              const exists = prev.some(msg => msg.id === data.id)
+              if (exists) return prev
+              return [...prev, data]
+            })
+          }
+        } else {
+          // Для демо-чата создаем локальное сообщение
+          const localMessage: Message = {
+            id: `demo-${Date.now()}`,
+            chat_id: chat.id,
+            sender_id: currentUserId,
+            sender_type: senderType,
+            text: text,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+          setMessages(prev => [...prev, localMessage])
         }
       } catch (err) {
         console.error("Error sending message:", err)
-        // Не показываем ошибку пользователю, так как сообщение уже отображается локально
+        setError("Ошибка при отправке сообщения")
       } finally {
         setSending(false)
       }

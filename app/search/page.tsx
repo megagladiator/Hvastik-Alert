@@ -48,9 +48,13 @@ export default function SearchPage() {
 
   const fetchPets = async () => {
     try {
-      // Проверяем, настроен ли Supabase
-      if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL && 
-          !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")) {
+        // Проверяем, настроен ли Supabase
+        console.log('🔍 Проверяем настройки Supabase...')
+        console.log('🔍 supabase:', !!supabase)
+        console.log('🔍 NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+        
+        if (supabase && process.env.NEXT_PUBLIC_SUPABASE_URL && 
+            !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")) {
         
         // Добавляем таймаут для запроса к Supabase
         const timeoutPromise = new Promise((_, reject) => 
@@ -69,8 +73,11 @@ export default function SearchPage() {
           if (error) {
             console.warn("Supabase error, using demo data:", error.message)
           } else if (data && data.length > 0) {
+            console.log("✅ Загружены реальные данные из Supabase:", data.length, "объявлений")
             setPets(data)
             return
+          } else {
+            console.log("⚠️ Supabase вернул пустой результат, используем демо-данные")
           }
         } catch (timeoutError) {
           console.warn("Supabase timeout, using demo data")
@@ -89,8 +96,8 @@ export default function SearchPage() {
           description: "Дружелюбный золотистый лабрадор, очень активный. Потерялся в районе центрального пляжа.",
           color: "Золотистый",
           location: "Центральный пляж, Анапа",
-          latitude: 44.8951,
-          longitude: 37.3142,
+          latitude: 44.8900,
+          longitude: 37.3200,
           contact_phone: "+7 (918) 123-45-67",
           contact_name: "Анна",
           reward: 5000,
@@ -168,6 +175,24 @@ export default function SearchPage() {
           created_at: "2024-01-11T16:45:00Z",
           status: "active",
         },
+        {
+          id: "6",
+          type: "lost",
+          animal_type: "cat",
+          breed: "Британская",
+          name: "Мурзик",
+          description: "Серый британский кот, очень спокойный. Потерялся в станице Гостагаевская.",
+          color: "Серый",
+          location: "Гостагаевская",
+          latitude: 44.8951,
+          longitude: 37.3142,
+          contact_phone: "+7 (918) 111-22-33",
+          contact_name: "Мария",
+          reward: 2000,
+          photo_url: "/placeholder.svg?height=200&width=300",
+          created_at: "2024-01-10T14:20:00Z",
+          status: "active",
+        },
       ]
       setPets(demoData)
     } catch (error) {
@@ -183,8 +208,8 @@ export default function SearchPage() {
           description: "Дружелюбный золотистый лабрадор, очень активный. Потерялся в районе центрального пляжа.",
           color: "Золотистый",
           location: "Центральный пляж, Анапа",
-          latitude: 44.8951,
-          longitude: 37.3142,
+          latitude: 44.8900,
+          longitude: 37.3200,
           contact_phone: "+7 (918) 123-45-67",
           contact_name: "Анна",
           reward: 5000,

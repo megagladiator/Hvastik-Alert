@@ -9,6 +9,52 @@ const generateUserId = (nextAuthId: string | undefined): string | null => {
   return uuidv5(nextAuthId, namespace)
 }
 
+export async function GET(request: NextRequest) {
+  try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Админский клиент Supabase не настроен' },
+        { status: 500 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const type = searchParams.get('type')
+    const status = searchParams.get('status') || 'active'
+
+    let query = supabaseAdmin
+      .from('pets')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (type) {
+      query = query.eq('type', type)
+    }
+
+    if (status) {
+      query = query.eq('status', status)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json(data || [])
+  } catch (error: any) {
+    console.error('API error:', error)
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
@@ -29,7 +75,10 @@ export async function POST(request: NextRequest) {
 
     console.log('📝 API: Сохранение объявления:', {
       editId: editId,
-      finalPetData: finalPetData,
+      name: finalPetData.name,
+      location: finalPetData.location,
+      latitude: finalPetData.latitude,
+      longitude: finalPetData.longitude,
       photo_url: finalPetData.photo_url
     })
 

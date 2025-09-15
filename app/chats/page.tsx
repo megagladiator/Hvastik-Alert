@@ -23,6 +23,7 @@ interface Chat {
     type: "lost" | "found"
     photo_url?: string
     contact_name: string
+    contact_email?: string
   }
   last_message?: {
     text: string
@@ -49,53 +50,60 @@ export default function ChatsPage() {
         return
       }
 
-      // Демо-данные для чатов
-      const demoChats = [
-        {
-          id: "demo-chat-1",
-          pet_id: "1",
-          user_id: user.id,
-          owner_id: "demo-owner-1",
-          created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 часа назад
-          updated_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 минут назад
-          pet: {
-            id: "1",
-            name: "Рекс",
-            breed: "Лабрадор",
-            type: "lost" as const,
-            photo_url: "/placeholder.svg?height=60&width=60",
-            contact_name: "Анна",
-          },
-          last_message: {
-            text: "Спасибо за информацию! Можете прислать фото?",
-            created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-            sender_type: "owner" as const,
-          },
-        },
-        {
-          id: "demo-chat-2",
-          pet_id: "2",
-          user_id: user.id,
-          owner_id: "demo-owner-2",
-          created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 день назад
-          updated_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 минут назад
-          pet: {
-            id: "2",
-            name: "Мурка",
-            breed: "Персидская",
-            type: "found" as const,
-            photo_url: "/placeholder.svg?height=60&width=60",
-            contact_name: "Михаил",
-          },
-          last_message: {
-            text: "Да, это похоже на моего питомца!",
-            created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-            sender_type: "user" as const,
-          },
-        },
-      ]
+      // Загружаем реальные чаты из БД
+      try {
+        const { data: chatsData, error: chatsError } = await supabase
+          .from("chats")
+          .select(`
+            *,
+            pets!inner(
+              id,
+              name,
+              breed,
+              type,
+              photo_url,
+              contact_name,
+              contact_email,
+              status
+            )
+          `)
+          .or(`user_id.eq.${user.id},owner_id.eq.${user.id}`)
+          .order("updated_at", { ascending: false })
 
-      setChats(demoChats)
+        if (chatsError) {
+          console.error("Error fetching chats:", chatsError)
+          setChats([])
+        } else {
+          // Фильтруем чаты с активными питомцами
+          const activeChats = chatsData?.filter(chat => 
+            chat.pets && chat.pets.status === 'active'
+          ) || []
+          
+          // Получаем последние сообщения для каждого чата
+          const chatsWithMessages = await Promise.all(
+            activeChats.map(async (chat) => {
+              const { data: lastMessage } = await supabase
+                .from("messages")
+                .select("text, created_at, sender_type")
+                .eq("chat_id", chat.id)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .single()
+
+              return {
+                ...chat,
+                pet: chat.pets,
+                last_message: lastMessage || null
+              }
+            })
+          )
+
+          setChats(chatsWithMessages)
+        }
+      } catch (error) {
+        console.error("Error loading chats:", error)
+        setChats([])
+      }
       setLoading(false)
     }
 
@@ -220,7 +228,15 @@ export default function ChatsPage() {
                               {chat.pet?.name} • {chat.pet?.breed}
                             </h3>
                             <p className="text-sm text-gray-600">
-                              {chat.pet?.contact_name}
+                              Владелец: {chat.pet?.contact_name}
+                            </p>
+                            {chat.pet?.contact_email && (
+                              <p className="text-xs text-gray-500">
+                                📧 {chat.pet.contact_email}
+                              </p>
+                            )}
+                            <p className="text-xs text-blue-600">
+                              💬 Ваши сообщения отправляются этому пользователю
                             </p>
                           </div>
                           <Badge
