@@ -12,8 +12,14 @@ export function UserEmailIndicator() {
 
   const handleSignOut = async () => {
     if (supabase) {
-      await supabase.auth.signOut()
-      router.push("/")
+      try {
+        await supabase.auth.signOut()
+        // Принудительно обновляем страницу для сброса состояния
+        router.refresh()
+        router.push("/")
+      } catch (error) {
+        console.error('Error signing out:', error)
+      }
     }
   }
 

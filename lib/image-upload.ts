@@ -78,6 +78,52 @@ export function validateImageDimensions(file: File): Promise<{ valid: boolean; e
 }
 
 /**
+ * Автоматически сжимает изображение в зависимости от его размера
+ */
+export function autoCompressImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const originalSize = file.size
+    
+    // Если файл меньше 500KB, не сжимаем
+    if (originalSize < 500 * 1024) {
+      resolve(file)
+      return
+    }
+    
+    // Определяем параметры сжатия в зависимости от размера
+    let maxWidth = 1200
+    let maxHeight = 1200
+    let quality = 0.8
+    
+    if (originalSize > 5 * 1024 * 1024) {
+      // Очень большие файлы (>5MB) - агрессивное сжатие
+      maxWidth = 800
+      maxHeight = 800
+      quality = 0.6
+    } else if (originalSize > 3 * 1024 * 1024) {
+      // Большие файлы (3-5MB) - среднее сжатие
+      maxWidth = 1000
+      maxHeight = 1000
+      quality = 0.7
+    } else if (originalSize > 1 * 1024 * 1024) {
+      // Средние файлы (1-3MB) - легкое сжатие
+      maxWidth = 1200
+      maxHeight = 1200
+      quality = 0.8
+    } else {
+      // Маленькие файлы (500KB-1MB) - минимальное сжатие
+      maxWidth = 1400
+      maxHeight = 1400
+      quality = 0.9
+    }
+    
+    compressImage(file, maxWidth, maxHeight, quality)
+      .then(resolve)
+      .catch(reject)
+  })
+}
+
+/**
  * Сжимает изображение до разумных размеров
  */
 export function compressImage(file: File, maxWidth: number = 1200, maxHeight: number = 1200, quality: number = 0.8): Promise<File> {
@@ -90,15 +136,37 @@ export function compressImage(file: File, maxWidth: number = 1200, maxHeight: nu
       // Вычисляем новые размеры с сохранением пропорций
       let { width, height } = img
       
+      // Умное масштабирование - если изображение очень большое, сжимаем сильнее
+      const originalSize = file.size
+      let targetQuality = quality
+      let targetMaxWidth = maxWidth
+      let targetMaxHeight = maxHeight
+
+      // Если файл больше 5MB, сжимаем агрессивнее
+      if (originalSize > 5 * 1024 * 1024) {
+        targetMaxWidth = 800
+        targetMaxHeight = 800
+        targetQuality = 0.6
+      } else if (originalSize > 3 * 1024 * 1024) {
+        targetMaxWidth = 1000
+        targetMaxHeight = 1000
+        targetQuality = 0.7
+      } else if (originalSize > 1 * 1024 * 1024) {
+        targetMaxWidth = 1200
+        targetMaxHeight = 1200
+        targetQuality = 0.8
+      }
+
+      // Масштабируем изображение
       if (width > height) {
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width
-          width = maxWidth
+        if (width > targetMaxWidth) {
+          height = (height * targetMaxWidth) / width
+          width = targetMaxWidth
         }
       } else {
-        if (height > maxHeight) {
-          width = (width * maxHeight) / height
-          height = maxHeight
+        if (height > targetMaxHeight) {
+          width = (width * targetMaxHeight) / height
+          height = targetMaxHeight
         }
       }
 
@@ -114,7 +182,7 @@ export function compressImage(file: File, maxWidth: number = 1200, maxHeight: nu
         (blob) => {
           if (blob) {
             const compressedFile = new File([blob], file.name, {
-              type: file.type,
+              type: 'image/jpeg', // Всегда конвертируем в JPEG для лучшего сжатия
               lastModified: Date.now()
             })
             resolve(compressedFile)
@@ -122,8 +190,8 @@ export function compressImage(file: File, maxWidth: number = 1200, maxHeight: nu
             reject(new Error('Ошибка сжатия изображения'))
           }
         },
-        file.type,
-        quality
+        'image/jpeg', // Всегда используем JPEG для сжатия
+        targetQuality
       )
     }
 
@@ -216,12 +284,13 @@ async function uploadDataUrlToSupabase(dataUrl: string): Promise<string | null> 
       throw new Error(dimensionValidation.error)
     }
 
-    // Сжимаем изображение если нужно
-    let finalFile = file
-    if (file.size > 2 * 1024 * 1024) { // Если больше 2MB, сжимаем
-      console.log('🔄 Сжимаем изображение...')
-      finalFile = await compressImage(file)
+    // Автоматически сжимаем изображение
+    console.log('🔄 Обрабатываем изображение...')
+    const finalFile = await autoCompressImage(file)
+    if (finalFile.size !== file.size) {
       console.log(`✅ Изображение сжато: ${(file.size / 1024 / 1024).toFixed(1)}MB → ${(finalFile.size / 1024 / 1024).toFixed(1)}MB`)
+    } else {
+      console.log('✅ Изображение не требует сжатия')
     }
     
     // Загружаем в Supabase Storage

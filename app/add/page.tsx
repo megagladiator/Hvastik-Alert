@@ -15,7 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { safeSupabase as supabase } from "@/lib/supabase"
 import { v5 as uuidv5 } from 'uuid'
-import { uploadLocalImageToSupabase, isValidProductionUrl, getProductionPlaceholder, validateImage, validateImageDimensions, compressImage } from '@/lib/image-upload'
+import { uploadLocalImageToSupabase, isValidProductionUrl, getProductionPlaceholder, validateImage, validateImageDimensions, autoCompressImage } from '@/lib/image-upload'
 
 export default function AddPetPage() {
   const router = useRouter()
@@ -244,26 +244,33 @@ export default function AddPetPage() {
     if (!file) return
 
     try {
-      // Валидируем файл
-      const validation = validateImage(file)
+      // Сначала проверяем только тип файла (без размера)
+      if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+        alert(`❌ Неподдерживаемый тип файла. Разрешены: JPEG, PNG, WebP, GIF`)
+        return
+      }
+
+      // Автоматически сжимаем изображение ПЕРЕД валидацией размера
+      console.log('🔄 Обрабатываем изображение...')
+      const finalFile = await autoCompressImage(file)
+      if (finalFile.size !== file.size) {
+        console.log(`✅ Изображение сжато: ${(file.size / 1024 / 1024).toFixed(1)}MB → ${(finalFile.size / 1024 / 1024).toFixed(1)}MB`)
+      } else {
+        console.log('✅ Изображение не требует сжатия')
+      }
+
+      // Теперь валидируем сжатый файл
+      const validation = validateImage(finalFile)
       if (!validation.valid) {
         alert(`❌ ${validation.error}`)
         return
       }
 
       // Валидируем размеры изображения
-      const dimensionValidation = await validateImageDimensions(file)
+      const dimensionValidation = await validateImageDimensions(finalFile)
       if (!dimensionValidation.valid) {
         alert(`❌ ${dimensionValidation.error}`)
         return
-      }
-
-      // Сжимаем изображение если нужно
-      let finalFile = file
-      if (file.size > 2 * 1024 * 1024) { // Если больше 2MB, сжимаем
-        console.log('🔄 Сжимаем изображение...')
-        finalFile = await compressImage(file)
-        console.log(`✅ Изображение сжато: ${(file.size / 1024 / 1024).toFixed(1)}MB → ${(finalFile.size / 1024 / 1024).toFixed(1)}MB`)
       }
 
       setSelectedFile(finalFile)
@@ -304,26 +311,33 @@ export default function AddPetPage() {
     if (!file || !file.type.startsWith('image/')) return
 
     try {
-      // Валидируем файл
-      const validation = validateImage(file)
+      // Сначала проверяем только тип файла (без размера)
+      if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+        alert(`❌ Неподдерживаемый тип файла. Разрешены: JPEG, PNG, WebP, GIF`)
+        return
+      }
+
+      // Автоматически сжимаем изображение ПЕРЕД валидацией размера
+      console.log('🔄 Обрабатываем изображение...')
+      const finalFile = await autoCompressImage(file)
+      if (finalFile.size !== file.size) {
+        console.log(`✅ Изображение сжато: ${(file.size / 1024 / 1024).toFixed(1)}MB → ${(finalFile.size / 1024 / 1024).toFixed(1)}MB`)
+      } else {
+        console.log('✅ Изображение не требует сжатия')
+      }
+
+      // Теперь валидируем сжатый файл
+      const validation = validateImage(finalFile)
       if (!validation.valid) {
         alert(`❌ ${validation.error}`)
         return
       }
 
       // Валидируем размеры изображения
-      const dimensionValidation = await validateImageDimensions(file)
+      const dimensionValidation = await validateImageDimensions(finalFile)
       if (!dimensionValidation.valid) {
         alert(`❌ ${dimensionValidation.error}`)
         return
-      }
-
-      // Сжимаем изображение если нужно
-      let finalFile = file
-      if (file.size > 2 * 1024 * 1024) { // Если больше 2MB, сжимаем
-        console.log('🔄 Сжимаем изображение...')
-        finalFile = await compressImage(file)
-        console.log(`✅ Изображение сжато: ${(file.size / 1024 / 1024).toFixed(1)}MB → ${(finalFile.size / 1024 / 1024).toFixed(1)}MB`)
       }
 
       setSelectedFile(finalFile)
@@ -828,7 +842,7 @@ export default function AddPetPage() {
                 <Label htmlFor="photo_url">Фото питомца</Label>
                 <p className="text-xs text-gray-500">
                   Поддерживаемые форматы: JPEG, PNG, WebP, GIF. Максимальный размер: 5MB. 
-                  Рекомендуемое разрешение: 100x100 - 2048x2048px. Изображения больше 2MB будут автоматически сжаты.
+                  Рекомендуемое разрешение: 100x100 - 2048x2048px. Все изображения автоматически сжимаются для оптимизации.
                 </p>
                 
                 {/* Скрытый input для выбора файла */}

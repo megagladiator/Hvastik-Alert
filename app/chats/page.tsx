@@ -19,6 +19,8 @@ interface Chat {
   owner_id: string
   created_at: string
   updated_at: string
+  user_email?: string
+  owner_email?: string
   pet?: {
     id: string
     name: string
@@ -55,8 +57,15 @@ export default function ChatsPage() {
 
       // Загружаем реальные чаты из БД через API
       try {
-        // Передаем userId для поиска чатов где пользователь либо отправитель, либо получатель
-        const response = await fetch(`/api/chats?userId=${user.id}`)
+        let response
+        
+        if (isAdmin) {
+          // Администратор видит все чаты
+          response = await fetch(`/api/chats`)
+        } else {
+          // Обычные пользователи видят только свои чаты
+          response = await fetch(`/api/chats?userId=${user.id}`)
+        }
         
         if (!response.ok) {
           const errorData = await response.json()
@@ -75,7 +84,7 @@ export default function ChatsPage() {
     }
 
     fetchUserAndChats()
-  }, [])
+  }, [isAdmin, isAuthenticated])
 
   // Автоматический переход к целевому чату
   useEffect(() => {
@@ -306,16 +315,16 @@ export default function ChatsPage() {
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Badge
-                              variant={chat.pet?.type === "lost" ? "destructive" : "default"}
-                              className={
-                                chat.pet?.type === "lost" 
-                                  ? "bg-red-100 text-red-800" 
-                                  : "bg-green-100 text-green-800"
-                              }
-                            >
-                              {chat.pet?.type === "lost" ? "Потерялся" : "Найден"}
-                            </Badge>
+                          <Badge
+                            variant={chat.pet?.type === "lost" ? "destructive" : "default"}
+                            className={
+                              chat.pet?.type === "lost" 
+                                ? "bg-red-100 text-red-800" 
+                                : "bg-green-100 text-green-800"
+                            }
+                          >
+                            {chat.pet?.type === "lost" ? "Потерялся" : "Найден"}
+                          </Badge>
                             {isOwner && (
                               <Badge variant="outline" className="text-blue-600 border-blue-300">
                                 Владелец

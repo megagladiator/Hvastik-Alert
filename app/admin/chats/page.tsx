@@ -99,7 +99,14 @@ export default function AdminChatsPage() {
 
   // Функция для архивирования чата
   const archiveChat = async (chatId: string) => {
+    if (!user?.id) {
+      alert('Пользователь не авторизован')
+      return
+    }
+
     try {
+      console.log('Архивируем чат:', { chatId, userId: user.id })
+      
       const response = await fetch('/api/chats/archive', {
         method: 'POST',
         headers: {
@@ -107,17 +114,27 @@ export default function AdminChatsPage() {
         },
         body: JSON.stringify({
           chatId: chatId,
-          userId: user?.id,
+          userId: user.id,
           isOwner: true // Администратор может архивировать любые чаты
         }),
       })
 
+      console.log('Ответ сервера:', response.status, response.statusText)
+
       if (response.ok) {
+        const result = await response.json()
+        console.log('Результат архивирования:', result)
         await loadAllChats() // Перезагружаем список
         alert('Чат архивирован')
       } else {
-        const errorData = await response.json()
-        alert(`Ошибка: ${errorData.error}`)
+        const errorText = await response.text()
+        console.error('Ошибка ответа:', errorText)
+        try {
+          const errorData = JSON.parse(errorText)
+          alert(`Ошибка: ${errorData.error}`)
+        } catch {
+          alert(`Ошибка: ${errorText}`)
+        }
       }
     } catch (error) {
       console.error('Ошибка архивирования чата:', error)
@@ -188,9 +205,14 @@ export default function AdminChatsPage() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
-    const diffTime = Math.abs(now.getTime() - date.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const diffTime = now.getTime() - date.getTime()
+    const diffMinutes = Math.floor(diffTime / (1000 * 60))
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
     
+    if (diffMinutes < 1) return "Только что"
+    if (diffMinutes < 60) return `${diffMinutes} мин. назад`
+    if (diffHours < 24) return `${diffHours} ч. назад`
     if (diffDays === 1) return "Вчера"
     if (diffDays < 7) return `${diffDays} дн. назад`
     if (diffDays < 30) return `${Math.ceil(diffDays / 7)} нед. назад`
@@ -345,9 +367,23 @@ export default function AdminChatsPage() {
                           <p className="text-sm text-gray-600">
                             ID чата: {chat.id.slice(0, 8)}...
                           </p>
-                          <div className="text-xs text-gray-500 mt-1">
-                            <p>👤 Пользователь: {chat.user_email}</p>
-                            <p>🏠 Владелец: {chat.owner_email}</p>
+                          <div className="text-xs text-gray-500 mt-1 space-y-1">
+                            <div className="flex items-center">
+                              <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                              <span className="font-medium">👤 Абонент (пишет):</span>
+                            </div>
+                            <div className="ml-4 text-xs">
+                              <p>Email: {chat.user_email}</p>
+                              <p>ID: {chat.user_id.slice(0, 8)}...</p>
+                            </div>
+                            <div className="flex items-center mt-2">
+                              <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                              <span className="font-medium">🏠 Владелец (отвечает):</span>
+                            </div>
+                            <div className="ml-4 text-xs">
+                              <p>Email: {chat.owner_email}</p>
+                              <p>ID: {chat.owner_id.slice(0, 8)}...</p>
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -397,7 +433,7 @@ export default function AdminChatsPage() {
                   
                   {/* Кнопки управления */}
                   <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
-                    <Link href={`/chat/${chat.pet_id}`}>
+                    <Link href={`/chat/${chat.pet_id}?chatId=${chat.id}&from=admin`}>
                       <Button variant="outline" size="sm">
                         <MessageCircle className="h-4 w-4 mr-1" />
                         Открыть чат

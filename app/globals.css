@@ -12,6 +12,12 @@ body {
   }
 }
 
+/* Стили для кастомных маркеров карты */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

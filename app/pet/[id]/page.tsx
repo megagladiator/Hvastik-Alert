@@ -9,6 +9,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { safeSupabase as supabase } from "@/lib/supabase"
 import { ContactInfo } from "@/components/contact-info"
+import { SinglePetMap } from "@/components/single-pet-map"
 
 interface Pet {
   id: string
@@ -270,15 +271,7 @@ export default function PetDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <MapPin className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                    <p>Карта будет здесь</p>
-                    <p className="text-sm">
-                      Координаты: {pet.latitude}, {pet.longitude}
-                    </p>
-                  </div>
-                </div>
+                <SinglePetMap pet={pet} />
               </CardContent>
             </Card>
           </div>
@@ -287,12 +280,8 @@ export default function PetDetailPage() {
           <div className="space-y-6">
             {/* Contact */}
             <ContactInfo
-              contact_name={pet.contact_name}
-              contact_phone={pet.contact_phone}
               petId={pet.id}
-              showPhone={false}
               isOwner={currentUser?.id === pet.user_id}
-              isAdmin={false}
               currentUserId={currentUser?.id}
             />
 
