@@ -12,3 +12,30 @@ export const supabaseAdmin = supabaseUrl && supabaseServiceKey
       }
     })
   : null
+
+// Safe admin client that won't cause build errors
+export const safeSupabaseAdmin = supabaseAdmin || {
+  from: () => ({
+    select: () => ({
+      eq: () => ({
+        order: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+        single: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+      }),
+    }),
+    insert: () => ({
+      select: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+      single: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+    }),
+    update: () => ({
+      eq: () => ({
+        select: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+      }),
+    }),
+  }),
+  auth: {
+    admin: {
+      listUsers: () => Promise.resolve({ data: { users: [] }, error: new Error("Supabase not configured") }),
+      getUserByEmail: () => Promise.resolve({ data: { user: null }, error: new Error("Supabase not configured") }),
+    }
+  }
+}

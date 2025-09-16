@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { supabaseAdmin, safeSupabaseAdmin } from '@/lib/supabase-admin'
 import { v5 as uuidv5 } from 'uuid'
 
 // Функция для генерации UUID из NextAuth.js ID
@@ -11,18 +11,13 @@ const generateUserId = (nextAuthId: string | undefined): string | null => {
 
 export async function GET(request: NextRequest) {
   try {
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Админский клиент Supabase не настроен' },
-        { status: 500 }
-      )
-    }
-
+    const client = supabaseAdmin || safeSupabaseAdmin
+    
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type')
     const status = searchParams.get('status') || 'active'
 
-    let query = supabaseAdmin
+    let query = client
       .from('pets')
       .select('*')
       .order('created_at', { ascending: false })
