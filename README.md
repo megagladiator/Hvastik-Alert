@@ -1,6 +1,6 @@
 # Hvastik Alert - Платформа поиска домашних животных
 
-[![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](https://github.com/agentgl007/hvastik-alert)
+[![Version](https://img.shields.io/badge/version-1.2.2-blue.svg)](https://github.com/agentgl007/hvastik-alert)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat&logo=supabase&logoColor=white)](https://supabase.com)
 [![Next.js](https://img.shields.io/badge/Next.js-15.2.4-black?style=flat&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat&logo=typescript)](https://www.typescriptlang.org)
@@ -186,5 +186,6 @@ The application includes an automatic Supabase keep-alive system to prevent the 
 - Development mode shows status widget in bottom-right corner
 - All operations are logged with timestamps
 
-For detailed documentation, see [docs/SUPABASE_KEEP_ALIVE.md](docs/SUPABASE_KEEP_ALIVE.md)#   F o r c e   V e r c e l   r e d e p l o y  
+For detailed documentation, see [docs/SUPABASE_KEEP_ALIVE.md](docs/SUPABASE_KEEP_ALIVE.md)#   F o r c e   V e r c e l   r e d e p l o y 
+ 
  
