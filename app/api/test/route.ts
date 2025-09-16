@@ -4,7 +4,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ 
     message: 'Test API works!', 
     timestamp: new Date().toISOString(),
-    version: '1.2.6'
+    version: '1.2.7'
   })
 }
 
