@@ -379,67 +379,69 @@ export default function SearchPage() {
             ) : (
               <div className="space-y-4 max-h-[600px] overflow-y-auto">
                 {filteredPets.map((pet) => (
-                  <Card key={pet.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex gap-4">
-                        <img
-                          src={pet.photo_url || "/placeholder.svg?height=80&width=80"}
-                          alt={pet.name}
-                          className="w-20 h-20 rounded-lg object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <Badge
-                                variant={pet.type === "lost" ? "destructive" : "default"}
-                                className={
-                                  pet.type === "lost" ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
-                                }
-                              >
-                                {pet.type === "lost" ? "Потерялся" : "Найден"}
-                              </Badge>
-                              {pet.reward && (
-                                <Badge variant="outline" className="ml-2 text-orange-600 border-orange-200">
-                                  {pet.reward.toLocaleString()} ₽
+                  <Card key={pet.id} className="hover:shadow-md transition-shadow cursor-pointer group">
+                    <Link href={`/pet/${pet.id}`} className="block">
+                      <CardContent className="p-4">
+                        <div className="flex gap-4">
+                          <img
+                            src={pet.photo_url || "/placeholder.svg?height=80&width=80"}
+                            alt={pet.name}
+                            className="w-20 h-20 rounded-lg object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <Badge
+                                  variant={pet.type === "lost" ? "destructive" : "default"}
+                                  className={
+                                    pet.type === "lost" ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
+                                  }
+                                >
+                                  {pet.type === "lost" ? "Потерялся" : "Найден"}
                                 </Badge>
-                              )}
-                            </div>
-                          </div>
-
-                          <h3 className="font-semibold text-gray-900 mb-1">
-                            {pet.name} • {pet.breed}
-                          </h3>
-
-                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">{pet.description}</p>
-
-                          <div className="flex items-center text-xs text-gray-500 mb-2">
-                            <MapPin className="h-3 w-3 mr-1" />
-                            <span className="truncate">{pet.location}</span>
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center text-xs text-gray-500">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {formatDate(pet.created_at)}
+                                {pet.reward && (
+                                  <Badge variant="outline" className="ml-2 text-orange-600 border-orange-200">
+                                    {pet.reward.toLocaleString()} ₽
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
 
-                            <div className="flex gap-2">
-                              <Link href={`/pet/${pet.id}`}>
-                                <Button size="sm" variant="outline">
-                                  Подробнее
-                                </Button>
-                              </Link>
-                              <Link href={`/chat/${pet.id}`}>
-                                <Button size="sm" className="bg-orange-500 hover:bg-orange-600">
-                                  <MessageCircle className="h-3 w-3 mr-1" />
-                                  Чат
-                                </Button>
-                              </Link>
+                            <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-orange-600 transition-colors">
+                              {pet.name} • {pet.breed}
+                            </h3>
+
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{pet.description}</p>
+
+                            <div className="flex items-center text-xs text-gray-500 mb-2">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              <span className="truncate">{pet.location}</span>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center text-xs text-gray-500">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {formatDate(pet.created_at)}
+                              </div>
+
+                              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                                <Link href={`/pet/${pet.id}`}>
+                                  <Button size="sm" variant="outline">
+                                    Подробнее
+                                  </Button>
+                                </Link>
+                                <Link href={`/chat/${pet.id}`}>
+                                  <Button size="sm" className="bg-orange-500 hover:bg-orange-600">
+                                    <MessageCircle className="h-3 w-3 mr-1" />
+                                    Чат
+                                  </Button>
+                                </Link>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
+                      </CardContent>
+                    </Link>
                   </Card>
                 ))}
               </div>

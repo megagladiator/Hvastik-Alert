@@ -47,7 +47,7 @@ export function VersionInfo() {
       <div className="container mx-auto px-4">
         <div className="flex flex-col items-center space-y-2">
           <div className="flex items-center space-x-3">
-            <span className="font-semibold text-white">Hvastik-Alert</span>
+            <span className="font-semibold text-white">Хвостик Алерт</span>
             <span className="px-3 py-1 bg-orange-500 text-white rounded-full text-sm font-bold">
               v{versionInfo.version}
             </span>

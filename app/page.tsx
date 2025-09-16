@@ -431,7 +431,9 @@ export default function HomePage() {
                     Поиск
                   </div>
                 </Link>
-                {/* Временно показываем кнопки всегда для тестирования */}
+                {/* Показываем кнопки только для авторизованных пользователей */}
+                {isAuthenticated && (
+                  <>
                     <Link 
                       href="/cabinet" 
                       className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-orange-600 hover:bg-orange-50 border border-gray-100 hover:border-orange-200 font-medium"
@@ -450,6 +452,8 @@ export default function HomePage() {
                         Мои чаты
                       </div>
                     </Link>
+                  </>
+                )}
                 <Link 
                   href="/add?type=lost" 
                   className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 text-white hover:from-orange-600 hover:to-orange-700 font-medium"
@@ -688,48 +692,60 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPets.slice(0, 6).map((pet) => (
-              <Card key={pet.id} className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg">
-                <CardContent className="p-0">
-                  <div className="relative">
-                    <img
-                      src={pet.photo_url || "/placeholder.svg?height=200&width=300"}
-                      alt={pet.name}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                    <Badge
-                      className={`absolute top-3 left-3 ${
-                        pet.type === "lost" ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"
-                      } text-white border-0`}
-                    >
-                      {pet.type === "lost" ? "Ищет хозяина" : "Найден"}
-                    </Badge>
-                    {pet.reward && (
-                      <Badge className="absolute top-3 right-3 bg-orange-500 text-white border-0">
-                        {pet.reward.toLocaleString()} ₽
+              <Card key={pet.id} className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg cursor-pointer group">
+                <Link href={`/pet/${pet.id}`} className="block">
+                  <CardContent className="p-0">
+                    <div className="relative">
+                      <img
+                        src={pet.photo_url || "/placeholder.svg?height=200&width=300"}
+                        alt={pet.name}
+                        className="w-full h-48 object-cover rounded-t-lg group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <Badge
+                        className={`absolute top-3 left-3 ${
+                          pet.type === "lost" ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"
+                        } text-white border-0`}
+                      >
+                        {pet.type === "lost" ? "Ищет хозяина" : "Найден"}
                       </Badge>
-                    )}
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="font-bold text-lg text-gray-900 mb-2">
-                      {pet.name} • {pet.breed}
-                    </h3>
-
-                    <div className="flex items-center text-gray-600 mb-3">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      <span className="text-sm">{pet.location}</span>
-                      <span className="mx-2">•</span>
-                      <span className="text-sm">{formatDate(pet.created_at)}</span>
+                      {pet.reward && (
+                        <Badge className="absolute top-3 right-3 bg-orange-500 text-white border-0">
+                          {pet.reward.toLocaleString()} ₽
+                        </Badge>
+                      )}
                     </div>
 
-                    <Link href={`/pet/${pet.id}`}>
-                      <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold">
-                        <MessageCircle className="h-4 w-4 mr-2" />
-                        Связаться
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
+                    <div className="p-4">
+                      <h3 className="font-bold text-lg text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
+                        {pet.name} • {pet.breed}
+                      </h3>
+
+                      <div className="flex items-center text-gray-600 mb-3">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        <span className="text-sm">{pet.location}</span>
+                        <span className="mx-2">•</span>
+                        <span className="text-sm">{formatDate(pet.created_at)}</span>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button 
+                          className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Связаться
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          className="border-orange-500 text-orange-500 hover:bg-orange-50"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          Подробнее
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Link>
               </Card>
             ))}
           </div>

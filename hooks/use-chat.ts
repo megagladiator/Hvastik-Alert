@@ -22,14 +22,17 @@ interface Chat {
   archived_by?: string
   created_at: string
   updated_at: string
+  user_email?: string
+  owner_email?: string
 }
 
 interface UseChatProps {
   petId: string
   currentUserId?: string
+  existingChatId?: string | null
 }
 
-export function useChat({ petId, currentUserId }: UseChatProps) {
+export function useChat({ petId, currentUserId, existingChatId }: UseChatProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [chat, setChat] = useState<Chat | null>(null)
   const [loading, setLoading] = useState(true)
@@ -42,6 +45,21 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
     if (!supabase || !currentUserId) return
 
     try {
+      // Если передан existingChatId, используем его
+      if (existingChatId) {
+        const response = await fetch(`/api/chats?userId=${currentUserId}&chatId=${existingChatId}`)
+        
+        if (response.ok) {
+          const { data: existingChats } = await response.json()
+          const existingChat = existingChats?.find((chat: any) => chat.id === existingChatId)
+
+          if (existingChat) {
+            setChat(existingChat)
+            return existingChat
+          }
+        }
+      }
+
       // Сначала пытаемся найти существующий активный чат
       const response = await fetch(`/api/chats?userId=${currentUserId}&petId=${petId}`)
       
@@ -76,9 +94,15 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
       }
 
       // Проверяем, не является ли текущий пользователь владельцем питомца
-      // Но только если мы пытаемся создать НОВЫЙ чат
       if (pet.user_id === currentUserId) {
         throw new Error("Вы не можете создать чат с самим собой")
+      }
+
+      // Проверяем, не является ли пользователь администратором
+      // Администратор не должен создавать новые чаты
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.email === 'agentgl007@gmail.com') {
+        throw new Error("Администратор может только просматривать существующие чаты")
       }
 
       // Создаем новый чат через API
@@ -108,7 +132,7 @@ export function useChat({ petId, currentUserId }: UseChatProps) {
       setError(err instanceof Error ? err.message : "Ошибка при создании чата")
       return null
     }
-  }, [petId, currentUserId])
+  }, [petId, currentUserId, existingChatId])
 
   // Загрузка сообщений
   const loadMessages = useCallback(async (chatId: string) => {

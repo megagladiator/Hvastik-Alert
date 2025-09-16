@@ -108,6 +108,51 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
     const ownerId = searchParams.get('ownerId')
+    const chatId = searchParams.get('chatId')
+    const petId = searchParams.get('petId')
+
+    // Если передан chatId, ищем конкретный чат
+    if (chatId) {
+      const { data: chat, error } = await supabaseAdmin
+        .from('chats')
+        .select(`
+          *,
+          pets!inner(
+            id,
+            name,
+            breed,
+            type,
+            status
+          )
+        `)
+        .eq('id', chatId)
+        .single()
+
+      if (error) {
+        console.error('Ошибка поиска чата по ID:', error)
+        return NextResponse.json(
+          { error: error.message },
+          { status: 400 }
+        )
+      }
+
+      // Получаем email адреса для конкретного чата
+      const { data: users } = await supabaseAdmin.auth.admin.listUsers()
+      const userEmailMap = new Map<string, string>()
+      users?.users.forEach(u => {
+        if (u.id === chat.user_id) userEmailMap.set(u.id, u.email || 'Неизвестно')
+        if (u.id === chat.owner_id) userEmailMap.set(u.id, u.email || 'Неизвестно')
+      })
+
+      return NextResponse.json({ 
+        data: [{
+          ...chat,
+          pet: chat.pets,
+          user_email: userEmailMap.get(chat.user_id) || 'Неизвестно',
+          owner_email: userEmailMap.get(chat.owner_id) || 'Неизвестно'
+        }] 
+      })
+    }
 
     if (!userId && !ownerId) {
       return NextResponse.json(
@@ -132,6 +177,7 @@ export async function GET(request: NextRequest) {
       .eq('status', 'active')
       .order('updated_at', { ascending: false })
 
+    // Применяем фильтры для обычных пользователей
     if (userId && ownerId) {
       query = query.or(`user_id.eq.${userId},owner_id.eq.${ownerId}`)
     } else if (userId) {
@@ -155,6 +201,23 @@ export async function GET(request: NextRequest) {
       chat.pets && chat.pets.status === 'active'
     ) || []
 
+    // Получаем email адреса пользователей
+    const userIds = new Set<string>()
+    activeChats.forEach(chat => {
+      userIds.add(chat.user_id)
+      userIds.add(chat.owner_id)
+    })
+
+    const userIdsArray = Array.from(userIds)
+    const { data: users } = await supabaseAdmin.auth.admin.listUsers()
+    
+    const userEmailMap = new Map<string, string>()
+    users?.users.forEach(user => {
+      if (userIdsArray.includes(user.id)) {
+        userEmailMap.set(user.id, user.email || 'Неизвестно')
+      }
+    })
+
     // Получаем последние сообщения для каждого чата
     const chatsWithMessages = await Promise.all(
       activeChats.map(async (chat) => {
@@ -169,7 +232,9 @@ export async function GET(request: NextRequest) {
         return {
           ...chat,
           pet: chat.pets,
-          last_message: lastMessage || null
+          last_message: lastMessage || null,
+          user_email: userEmailMap.get(chat.user_id) || 'Неизвестно',
+          owner_email: userEmailMap.get(chat.owner_id) || 'Неизвестно'
         }
       })
     )

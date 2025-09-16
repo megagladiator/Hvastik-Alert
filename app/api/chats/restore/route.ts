@@ -20,15 +20,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверяем, что пользователь является владельцем объявления
+    // Проверяем, что пользователь является владельцем объявления или администратором
     if (!isOwner) {
       return NextResponse.json(
-        { error: 'Только владелец объявления может восстановить чат' },
+        { error: 'Только владелец объявления или администратор может восстановить чат' },
         { status: 403 }
       )
     }
 
-    // Восстанавливаем чат
+    // Восстанавливаем чат (администратор может восстанавливать любые чаты)
     const { data: restoredChat, error: restoreError } = await supabaseAdmin
       .from('chats')
       .update({
@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
         archived_by: null
       })
       .eq('id', chatId)
-      .eq('owner_id', userId)
       .select()
       .single()
 
