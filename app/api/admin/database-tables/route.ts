@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase-server'
+import { client, safeSupabaseServer } from '@/lib/supabase-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,15 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Table parameter is required' }, { status: 400 })
     }
 
-    if (!supabaseServer) {
-      return NextResponse.json({ error: 'Supabase server client not configured' }, { status: 500 })
-    }
-
+    const client = client || safeSupabaseServer
+    
     let data, error
 
     switch (table) {
       case 'pets':
-        const { data: petsData, error: petsError } = await supabaseServer
+        const { data: petsData, error: petsError } = await client
           .from('pets')
           .select('*')
           .order('created_at', { ascending: false })
@@ -29,7 +27,7 @@ export async function GET(request: NextRequest) {
           const userEmails: Record<string, string> = {}
           
           if (userIds.length > 0) {
-            const { data: usersData } = await supabaseServer.auth.admin.listUsers()
+            const { data: usersData } = await client.auth.admin.listUsers()
             if (usersData?.users) {
               usersData.users.forEach(user => {
                 userEmails[user.id] = user.email || ''
@@ -49,7 +47,7 @@ export async function GET(request: NextRequest) {
 
       case 'users':
         // Получаем пользователей через Admin API
-        const { data: usersData, error: usersError } = await supabaseServer.auth.admin.listUsers()
+        const { data: usersData, error: usersError } = await client.auth.admin.listUsers()
         
         if (usersError) {
           data = []
@@ -61,7 +59,7 @@ export async function GET(request: NextRequest) {
         break
 
       case 'settings':
-        const { data: settingsData, error: settingsError } = await supabaseServer
+        const { data: settingsData, error: settingsError } = await client
           .from('app_settings')
           .select('*')
           .order('updated_at', { ascending: false })
@@ -96,15 +94,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Table and ID are required' }, { status: 400 })
     }
 
-    if (!supabaseServer) {
-      return NextResponse.json({ error: 'Supabase server client not configured' }, { status: 500 })
-    }
+    const client = client || safeSupabaseServer
 
     let error
 
     switch (table) {
       case 'pets':
-        const { error: petsError } = await supabaseServer
+        const { error: petsError } = await client
           .from('pets')
           .delete()
           .eq('id', id)
@@ -113,12 +109,12 @@ export async function DELETE(request: NextRequest) {
         break
 
       case 'users':
-        const { error: usersError } = await supabaseServer.auth.admin.deleteUser(id)
+        const { error: usersError } = await client.auth.admin.deleteUser(id)
         error = usersError
         break
 
       case 'settings':
-        const { error: settingsError } = await supabaseServer
+        const { error: settingsError } = await client
           .from('app_settings')
           .delete()
           .eq('id', id)
@@ -152,15 +148,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Table, ID and data are required' }, { status: 400 })
     }
 
-    if (!supabaseServer) {
-      return NextResponse.json({ error: 'Supabase server client not configured' }, { status: 500 })
-    }
+    const client = client || safeSupabaseServer
 
     let error
 
     switch (table) {
       case 'pets':
-        const { error: petsError } = await supabaseServer
+        const { error: petsError } = await client
           .from('pets')
           .update(updateData)
           .eq('id', id)
@@ -169,12 +163,12 @@ export async function PUT(request: NextRequest) {
         break
 
       case 'users':
-        const { error: usersError } = await supabaseServer.auth.admin.updateUserById(id, updateData)
+        const { error: usersError } = await client.auth.admin.updateUserById(id, updateData)
         error = usersError
         break
 
       case 'settings':
-        const { error: settingsError } = await supabaseServer
+        const { error: settingsError } = await client
           .from('app_settings')
           .update(updateData)
           .eq('id', id)

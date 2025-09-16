@@ -12,6 +12,38 @@ export const supabaseServer = supabaseUrl && supabaseServiceKey ? createClient(s
   }
 }) : null
 
+// Safe server client that won't cause build errors
+export const safeSupabaseServer = supabaseServer || {
+  from: () => ({
+    select: () => ({
+      eq: () => ({
+        order: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+        single: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+      }),
+    }),
+    insert: () => ({
+      select: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+      single: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+    }),
+    update: () => ({
+      eq: () => ({
+        select: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+      }),
+    }),
+    delete: () => ({
+      eq: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+    }),
+  }),
+  auth: {
+    admin: {
+      listUsers: () => Promise.resolve({ data: { users: [] }, error: new Error("Supabase not configured") }),
+      getUserByEmail: () => Promise.resolve({ data: { user: null }, error: new Error("Supabase not configured") }),
+      deleteUser: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+      updateUserById: () => Promise.resolve({ data: null, error: new Error("Supabase not configured") }),
+    }
+  }
+}
+
 // Функция для проверки существования пользователя
 export async function checkUserExists(email: string) {
   if (!supabaseServer) {
