@@ -186,4 +186,5 @@ The application includes an automatic Supabase keep-alive system to prevent the 
 - Development mode shows status widget in bottom-right corner
 - All operations are logged with timestamps
 
-For detailed documentation, see [docs/SUPABASE_KEEP_ALIVE.md](docs/SUPABASE_KEEP_ALIVE.md)
+For detailed documentation, see [docs/SUPABASE_KEEP_ALIVE.md](docs/SUPABASE_KEEP_ALIVE.md)#   F o r c e   V e r c e l   r e d e p l o y  
+ 
