@@ -20,10 +20,14 @@
   },
   "build": {
     "env": {
-      "VERCEL_GIT_COMMIT_SHA": "@vercel-git-commit-sha"
+      "VERCEL_GIT_COMMIT_SHA": "@vercel-git-commit-sha",
+      "NODE_ENV": "production"
     }
   },
   "deployment": {
     "autoDeploy": true
+  },
+  "env": {
+    "NODE_ENV": "production"
   }
 }
