@@ -1,30 +1,50 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import packageJson from '../package.json'
 
 interface VersionInfo {
   version: string
   buildDate: string
   buildTime: string
   description: string
+  timestamp?: string
 }
 
 export function VersionInfo() {
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
 
   useEffect(() => {
-    // Автоматически берем версию из package.json
-    const now = new Date()
-    const buildDate = now.toISOString().split('T')[0] // YYYY-MM-DD
-    const buildTime = now.toTimeString().split(' ')[0] // HH:MM:SS
-    
-    setVersionInfo({
-      version: packageJson.version,
-      buildDate: buildDate,
-      buildTime: buildTime,
-      description: "Hvastik-Alert - Платформа для поиска потерянных и найденных домашних животных в Анапе"
-    })
+    // Получаем версию через API - это гарантирует актуальную версию при каждом деплое
+    const fetchVersionInfo = async () => {
+      try {
+        const response = await fetch('/api/version')
+        if (response.ok) {
+          const data = await response.json()
+          setVersionInfo(data)
+        } else {
+          // Fallback если API недоступен
+          const now = new Date()
+          setVersionInfo({
+            version: "1.0.0",
+            buildDate: now.toISOString().split('T')[0],
+            buildTime: now.toTimeString().split(' ')[0],
+            description: "Hvastik-Alert - Платформа для поиска потерянных и найденных домашних животных в Анапе"
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch version info:', error)
+        // Fallback при ошибке
+        const now = new Date()
+        setVersionInfo({
+          version: "1.0.0",
+          buildDate: now.toISOString().split('T')[0],
+          buildTime: now.toTimeString().split(' ')[0],
+          description: "Hvastik-Alert - Платформа для поиска потерянных и найденных домашних животных в Анапе"
+        })
+      }
+    }
+
+    fetchVersionInfo()
   }, [])
 
   if (!versionInfo) {
