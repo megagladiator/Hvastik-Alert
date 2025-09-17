@@ -30,3 +30,30 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /lib/generated/prisma
+
+# deployment packages
+/deployment-package/
+*.zip
+*.rar
+
+# build outputs
+.next/
+.swc/
+node_modules/
+
+# Firebase keys
+*firebase-adminsdk*.json
+
+# test files
+check-*.js
+test-*.js
+cleanup-*.js
+sms-service.mjs
+t-simple.js
+
+# temporary files
+e*
+hell*
+queryex
+tatus
+t lucide-react
