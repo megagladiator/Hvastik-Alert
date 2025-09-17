@@ -1,6 +1,6 @@
 {
   "name": "hvostik-alert",
-  "version": "1.2.12",
+  "version": "1.2.14",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -32,8 +32,6 @@
     "clsx": "^2.1.1",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
-    "firebase": "^12.2.1",
-    "firebase-admin": "^13.5.0",
     "leaflet": "latest",
     "lucide-react": "^0.454.0",
     "next": "14.2.15",

@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { applyActionCode, checkActionCode } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
 import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -18,7 +16,7 @@ export default function ActionPage() {
     const oobCode = searchParams.get('oobCode')
     const continueUrl = searchParams.get('continueUrl')
 
-    console.log('Firebase Action Page:', { mode, oobCode, continueUrl })
+    console.log('Supabase Action Page:', { mode, oobCode, continueUrl })
 
     if (mode === 'verifyEmail' && oobCode) {
       handleVerifyEmail(oobCode)
@@ -30,31 +28,34 @@ export default function ActionPage() {
 
   const handleVerifyEmail = async (oobCode: string) => {
     try {
-      // Проверяем код действия
-      const info = await checkActionCode(auth, oobCode)
-      console.log('Email verification info:', info)
+      // Используем Supabase для подтверждения email
+      const response = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token: oobCode }),
+      })
 
-      // Применяем код действия для подтверждения email
-      await applyActionCode(auth, oobCode)
+      const result = await response.json()
 
-      setStatus('success')
-      setMessage('Ваш email успешно подтвержден! Теперь вы можете войти в систему.')
-      
-      // Перенаправляем на страницу входа через 3 секунды
-      setTimeout(() => {
-        router.push('/auth')
-      }, 3000)
+      if (response.ok) {
+        setStatus('success')
+        setMessage('Ваш email успешно подтвержден! Теперь вы можете войти в систему.')
+        
+        // Перенаправляем на страницу входа через 3 секунды
+        setTimeout(() => {
+          router.push('/auth')
+        }, 3000)
+      } else {
+        setStatus('error')
+        setMessage(result.error || 'Ошибка подтверждения email.')
+      }
 
     } catch (error: any) {
       console.error('Error verifying email:', error)
       setStatus('error')
-      if (error.code === 'auth/invalid-action-code') {
-        setMessage('Срок действия ссылки истек или она недействительна. Попробуйте запросить новую.')
-      } else if (error.code === 'auth/user-disabled') {
-        setMessage('Ваш аккаунт заблокирован. Обратитесь к администратору.')
-      } else {
-        setMessage(`Ошибка подтверждения email: ${error.message}`)
-      }
+      setMessage('Ошибка подтверждения email. Попробуйте позже.')
     }
   }
 
