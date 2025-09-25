@@ -4,6 +4,7 @@ import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import { getAuthUrl } from "@/lib/url-utils"
+import { checkUserLogin } from "@/lib/user-check"
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
@@ -35,6 +36,33 @@ export default function RegisterPage() {
 
     setLoading(true)
 
+    // Сначала проверяем, существует ли пользователь
+    console.log("🔍 Проверяем существование пользователя:", email)
+    try {
+      const checkResponse = await fetch('/api/check-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const checkData = await checkResponse.json()
+      console.log("📋 Результат проверки:", checkData)
+
+      if (checkData.exists) {
+        console.log("❌ Пользователь уже существует, отклоняем регистрацию")
+        setError("Пользователь с таким email уже существует. Попробуйте войти в систему.")
+        setLoading(false)
+        return
+      } else {
+        console.log("✅ Пользователь не найден, продолжаем регистрацию")
+      }
+    } catch (checkError) {
+      console.error("Ошибка при проверке пользователя:", checkError)
+      // Продолжаем регистрацию, если проверка не удалась
+    }
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email,
@@ -51,7 +79,12 @@ export default function RegisterPage() {
       if (error) {
         console.error("Ошибка регистрации:", error)
         
-        if (error.message.includes('already registered') || error.message.includes('User already registered')) {
+        // Проверяем различные типы ошибок Supabase
+        if (error.code === 'over_email_send_rate_limit') {
+          // При ошибке лимита email показываем общее сообщение
+          // которое покрывает как дублирование, так и реальный лимит
+          setError("Пользователь с таким email уже существует или превышен лимит запросов. Попробуйте войти в систему или повторите попытку позже.")
+        } else if (error.message.includes('already registered') || error.message.includes('User already registered') || error.message.includes('already been registered')) {
           setError("Пользователь с таким email уже существует")
         } else if (error.message.includes('Invalid email')) {
           setError("Неверный формат email")
@@ -59,16 +92,30 @@ export default function RegisterPage() {
           setError("Пароль слишком слабый")
         } else if (error.message.includes('rate limit') || error.message.includes('Too many requests')) {
           setError("Слишком много запросов. Попробуйте позже")
+        } else if (error.code === 'email_address_already_registered') {
+          setError("Пользователь с таким email уже существует")
+        } else if (error.code === 'user_already_registered') {
+          setError("Пользователь с таким email уже существует")
         } else {
-          setError("Ошибка при регистрации")
+          setError("Ошибка при регистрации: " + (error.message || "Неизвестная ошибка"))
         }
         return
       }
 
       console.log("Пользователь создан:", data.user)
       console.log("Письмо подтверждения отправлено на:", email)
-      setSuccess(true)
-      setError("")
+      
+      // Проверяем, действительно ли это новый пользователь
+      // Если пользователь уже существовал, но регистрация "прошла успешно"
+      // это означает, что Supabase создал новую запись (что не должно происходить)
+      if (data.user && data.user.email_confirmed_at) {
+        // Если email уже подтвержден, значит пользователь уже существовал
+        setError("Пользователь с таким email уже существует. Попробуйте войти в систему.")
+        setSuccess(false)
+      } else {
+        setSuccess(true)
+        setError("")
+      }
       
     } catch (error: any) {
       console.error("Ошибка регистрации:", error)

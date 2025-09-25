@@ -190,9 +190,18 @@ export default function AddPetPage() {
           }),
         })
 
+        // Проверяем, что ответ действительно JSON
+        const contentType = response.headers.get('content-type')
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text()
+          console.error('❌ Получен не-JSON ответ:', text)
+          throw new Error('Сервер вернул неверный формат ответа. Проверьте настройки.')
+        }
+
         const result = await response.json()
 
         if (!response.ok) {
+          console.error('❌ API ошибка:', result)
           throw new Error(result.error || 'Ошибка при сохранении объявления')
         }
 
