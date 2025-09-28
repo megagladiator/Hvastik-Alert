@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabase-server'
 
+export const dynamic = 'force-dynamic'
+
 // Локальное хранилище ролей пользователей (в продакшене используйте базу данных)
 const userRoles: Record<string, 'admin' | 'user'> = {
   'agentgl007@gmail.com': 'admin', // Администратор
