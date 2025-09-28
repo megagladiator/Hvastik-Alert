@@ -730,7 +730,17 @@ export default function HomePage() {
                       <div className="flex gap-2">
                         <Button 
                           className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
-                          onClick={(e) => e.preventDefault()}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            // Открываем чат с владельцем питомца
+                            if (isAuthenticated) {
+                              // TODO: Реализовать открытие чата
+                              alert(`Связь с ${pet.contact_name} по телефону: ${pet.contact_phone}`)
+                            } else {
+                              alert('Для связи необходимо войти в систему')
+                            }
+                          }}
                         >
                           <MessageCircle className="h-4 w-4 mr-2" />
                           Связаться
@@ -738,7 +748,12 @@ export default function HomePage() {
                         <Button 
                           variant="outline" 
                           className="border-orange-500 text-orange-500 hover:bg-orange-50"
-                          onClick={(e) => e.preventDefault()}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            // Переходим на страницу подробной информации
+                            window.location.href = `/pet/${pet.id}`
+                          }}
                         >
                           Подробнее
                         </Button>
