@@ -70,6 +70,9 @@ export default function HomePage() {
   // State for background image URL and darkening percentage
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string>("/placeholder.svg?height=1080&width=1920")
 
+
+  const [backgroundDarkeningPercentage, setBackgroundDarkeningPercentage] = useState<number>(50)
+
   // Загрузка баннеров
   const { banners, loading: bannersLoading, error: bannersError } = useBanners({
     limit: 6,
@@ -77,8 +80,6 @@ export default function HomePage() {
     autoRefresh: true,
     refreshInterval: 60000 // обновление каждую минуту
   })
-
-  const [backgroundDarkeningPercentage, setBackgroundDarkeningPercentage] = useState<number>(50)
   
   // Обертываем setBackgroundImageUrl для логирования
   const setBackgroundImageUrlWithLog = (url: string, reason: string) => {
@@ -529,6 +530,37 @@ export default function HomePage() {
               <span className="text-green-600">91% питомцев находят через наш сервис!</span>
             </p>
 
+            {/* Информация о проекте */}
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-2xl p-6 border-4 border-gray-300 transition-all duration-300 transform hover:-translate-y-2">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 border-2 border-blue-200">
+                  <Heart className="h-8 w-8 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Единственный специализированный сайт</h3>
+                <p className="text-gray-600 text-sm">поиска животных в Анапе</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl p-6 border-4 border-gray-300 transition-all duration-300 transform hover:-translate-y-2">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 border-2 border-green-200">
+                  <Users className="h-8 w-8 text-green-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Созданный местными жителями</h3>
+                <p className="text-gray-600 text-sm">для местных жителей</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl p-6 border-4 border-gray-300 transition-all duration-300 transform hover:-translate-y-2">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4 border-2 border-orange-200">
+                  <Award className="h-8 w-8 text-orange-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">100% бесплатный</h3>
+                <p className="text-gray-600 text-sm">волонтерский проект</p>
+              </div>
+            </div>
+          </div>
+
             {/* Социальное доказательство */}
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-12 inline-block">
               <div className="flex items-center justify-center space-x-8">
@@ -723,24 +755,7 @@ export default function HomePage() {
               <p className="text-gray-600 text-lg">Ветеринарные клиники, приюты и зоомагазины в Анапе</p>
               <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mt-4 rounded-full"></div>
             </div>
-            <BannerGrid banners={banners} columns={2} maxBanners={4} />
-          </section>
-        )}
-
-        {/* Отладочная информация для баннеров */}
-        {bannersError && (
-          <section className="container mx-auto px-4 py-4">
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              <strong>Ошибка загрузки баннеров:</strong> {bannersError}
-            </div>
-          </section>
-        )}
-
-        {!bannersLoading && banners.length === 0 && !bannersError && (
-          <section className="container mx-auto px-4 py-4">
-            <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-              <strong>Информация:</strong> Баннеры не найдены или не активны
-            </div>
+            <BannerGrid banners={banners} columns={3} maxBanners={3} />
           </section>
         )}
 
@@ -918,26 +933,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Партнеры */}
-        <section className="bg-gray-50 py-16">
-          <div className="container mx-auto px-4">
-            <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">Наши партнеры</h2>
-            <div className="flex flex-wrap justify-center items-center gap-8 opacity-60">
-              <div className="bg-white px-6 py-3 rounded-lg shadow">
-                <span className="font-semibold text-gray-700">Ветклиника "Айболит"</span>
-              </div>
-              <div className="bg-white px-6 py-3 rounded-lg shadow">
-                <span className="font-semibold text-gray-700">Приют "Дружок"</span>
-              </div>
-              <div className="bg-white px-6 py-3 rounded-lg shadow">
-                <span className="font-semibold text-gray-700">Зоомагазин "Четыре лапы"</span>
-              </div>
-              <div className="bg-white px-6 py-3 rounded-lg shadow">
-                <span className="font-semibold text-gray-700">Администрация Анапы</span>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* CTA Section - Улучшенный */}
         <section className="bg-gradient-to-r from-orange-500 to-red-500 py-20">

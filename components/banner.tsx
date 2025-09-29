@@ -289,11 +289,28 @@ interface BannerGridProps {
 
 export function BannerGrid({ banners, columns = 2, maxBanners = 6 }: BannerGridProps) {
   const [closedBanners, setClosedBanners] = useState<Set<string>>(new Set())
+  const [rotationOffset, setRotationOffset] = useState(0)
 
-  const activeBanners = banners
+  const allActiveBanners = banners
     .filter(banner => banner.is_active && !closedBanners.has(banner.id))
     .sort((a, b) => b.priority - a.priority)
+
+  // Ротация баннеров - берем maxBanners баннеров, начиная с rotationOffset
+  const activeBanners = allActiveBanners
+    .slice(rotationOffset, rotationOffset + maxBanners)
+    .concat(allActiveBanners.slice(0, Math.max(0, rotationOffset + maxBanners - allActiveBanners.length)))
     .slice(0, maxBanners)
+
+  // Автоматическая ротация каждые 30 секунд
+  useEffect(() => {
+    if (allActiveBanners.length <= maxBanners) return
+
+    const interval = setInterval(() => {
+      setRotationOffset(prev => (prev + maxBanners) % allActiveBanners.length)
+    }, 30000) // 30 секунд
+
+    return () => clearInterval(interval)
+  }, [allActiveBanners.length, maxBanners])
 
   const handleCloseBanner = (bannerId: string) => {
     setClosedBanners(prev => new Set([...prev, bannerId]))
