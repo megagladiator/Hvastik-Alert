@@ -23,6 +23,8 @@ import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { safeSupabase as supabase } from "@/lib/supabase" // Use safeSupabase
 import PetMap from "@/components/pet-map"
 import { VersionInfo } from "@/components/version-info"
+import { BannerCarousel, BannerGrid } from "@/components/banner"
+import { useBanners } from "@/hooks/use-banners"
 import dynamic from "next/dynamic"
 
 interface Pet {
@@ -67,6 +69,14 @@ export default function HomePage() {
   const [foundPetsCount, setFoundPetsCount] = useState(0)
   // State for background image URL and darkening percentage
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string>("/placeholder.svg?height=1080&width=1920")
+
+  // Загрузка баннеров
+  const { banners, loading: bannersLoading } = useBanners({
+    limit: 6,
+    activeOnly: true,
+    autoRefresh: true,
+    refreshInterval: 60000 // обновление каждую минуту
+  })
   const [backgroundDarkeningPercentage, setBackgroundDarkeningPercentage] = useState<number>(50)
   
   // Обертываем setBackgroundImageUrl для логирования
@@ -678,6 +688,17 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* Рекламные баннеры */}
+        {!bannersLoading && banners.length > 0 && (
+          <section className="container mx-auto px-4 py-8">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Наши партнеры</h2>
+              <p className="text-gray-600">Ветеринарные клиники, приюты и зоомагазины в Анапе</p>
+            </div>
+            <BannerGrid banners={banners} columns={2} maxBanners={4} />
+          </section>
+        )}
 
         {/* Упрощенные карточки объявлений */}
         <section className="container mx-auto px-4 py-16">
