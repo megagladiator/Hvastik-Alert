@@ -691,10 +691,11 @@ export default function HomePage() {
 
         {/* Рекламные баннеры */}
         {!bannersLoading && banners.length > 0 && (
-          <section className="container mx-auto px-4 py-8">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Наши партнеры</h2>
-              <p className="text-gray-600">Ветеринарные клиники, приюты и зоомагазины в Анапе</p>
+          <section className="container mx-auto px-4 py-12">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">Наши партнеры</h2>
+              <p className="text-gray-600 text-lg">Ветеринарные клиники, приюты и зоомагазины в Анапе</p>
+              <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mt-4 rounded-full"></div>
             </div>
             <BannerGrid banners={banners} columns={2} maxBanners={4} />
           </section>
