@@ -735,10 +735,11 @@ export default function HomePage() {
                             e.stopPropagation()
                             // Открываем чат с владельцем питомца
                             if (isAuthenticated) {
-                              // TODO: Реализовать открытие чата
-                              alert(`Связь с ${pet.contact_name} по телефону: ${pet.contact_phone}`)
+                              // Переходим в чат с питомцем
+                              window.location.href = `/chat/${pet.id}`
                             } else {
-                              alert('Для связи необходимо войти в систему')
+                              // Перенаправляем на страницу авторизации
+                              window.location.href = '/auth'
                             }
                           }}
                         >
