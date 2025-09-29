@@ -357,6 +357,24 @@ export default function HomePage() {
           created_at: "2024-01-13T09:15:00Z",
           status: "active",
         },
+        {
+          id: "4",
+          type: "found",
+          animal_type: "rabbit",
+          breed: "Голландский карлик",
+          name: "Пушистик",
+          description: "Маленький белый кролик с черными ушками. Очень дружелюбный.",
+          color: "Белый с черными ушками",
+          location: "Центральный парк",
+          latitude: 44.8969,
+          longitude: 37.3051,
+          contact_phone: "+7 (918) 555-56-78",
+          contact_name: "Анна",
+          reward: 0,
+          photo_url: "/adorable-looking-kitten-with-dog.jpg",
+          created_at: "2024-01-14T14:30:00Z",
+          status: "active",
+        },
       ]
       setPets(demoData)
     } catch (error) {
@@ -386,7 +404,14 @@ export default function HomePage() {
     }
 
     if (animalFilter !== "all") {
-      filtered = filtered.filter((pet) => pet.animal_type === animalFilter)
+      if (animalFilter === "other") {
+        // "Другие" включает все типы кроме собак и кошек
+        filtered = filtered.filter((pet) => 
+          pet.animal_type !== "dog" && pet.animal_type !== "cat"
+        )
+      } else {
+        filtered = filtered.filter((pet) => pet.animal_type === animalFilter)
+      }
     }
 
     setFilteredPets(filtered)

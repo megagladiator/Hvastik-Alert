@@ -259,7 +259,14 @@ export default function SearchPage() {
     }
 
     if (animalFilter !== "all") {
-      filtered = filtered.filter((pet) => pet.animal_type === animalFilter)
+      if (animalFilter === "other") {
+        // "Другие" включает все типы кроме собак и кошек
+        filtered = filtered.filter((pet) => 
+          pet.animal_type !== "dog" && pet.animal_type !== "cat"
+        )
+      } else {
+        filtered = filtered.filter((pet) => pet.animal_type === animalFilter)
+      }
     }
 
     setFilteredPets(filtered)
