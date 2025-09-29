@@ -12,7 +12,7 @@ import BackgroundImageSettings from "@/components/admin/background-settings"
 import UserList from "@/components/admin/user-list"
 import DatabaseStats from "@/components/admin/database-stats"
 import DatabaseTables from "@/components/admin/database-tables"
-import { Settings, Users, Database, ImageIcon, Home, Table, MessageCircle } from "lucide-react"
+import { Settings, Users, Database, ImageIcon, Home, Table, MessageCircle, Megaphone } from "lucide-react"
 
 export default function AdminPage() {
   const { user, loading, isAuthenticated } = useSupabaseSession()
@@ -135,6 +135,14 @@ export default function AdminPage() {
           >
             <MessageCircle className="h-4 w-4" />
             Управление чатами
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => router.push("/admin/banners")}
+            className="flex items-center gap-2"
+          >
+            <Megaphone className="h-4 w-4" />
+            Управление баннерами
           </Button>
         </div>
 
