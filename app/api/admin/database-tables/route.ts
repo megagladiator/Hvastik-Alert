@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
-
-export const dynamic = 'force-dynamic'
+import { client, safeSupabaseServer } from '@/lib/supabase-server'
 
 export async function GET(request: NextRequest) {
   try {
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Админский клиент Supabase не настроен' },
-        { status: 500 }
-      )
-    }
-
     const { searchParams } = new URL(request.url)
     const table = searchParams.get('table')
 
@@ -19,11 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Table parameter is required' }, { status: 400 })
     }
 
+    const client = client || safeSupabaseServer
+    
     let data, error
 
     switch (table) {
       case 'pets':
-        const { data: petsData, error: petsError } = await supabaseAdmin
+        const { data: petsData, error: petsError } = await client
           .from('pets')
           .select('*')
           .order('created_at', { ascending: false })
@@ -34,7 +27,7 @@ export async function GET(request: NextRequest) {
           const userEmails: Record<string, string> = {}
           
           if (userIds.length > 0) {
-            const { data: usersData } = await supabaseAdmin.auth.admin.listUsers()
+            const { data: usersData } = await client.auth.admin.listUsers()
             if (usersData?.users) {
               usersData.users.forEach(user => {
                 userEmails[user.id] = user.email || ''
@@ -54,7 +47,7 @@ export async function GET(request: NextRequest) {
 
       case 'users':
         // Получаем пользователей через Admin API
-        const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers()
+        const { data: usersData, error: usersError } = await client.auth.admin.listUsers()
         
         if (usersError) {
           data = []
@@ -66,7 +59,7 @@ export async function GET(request: NextRequest) {
         break
 
       case 'settings':
-        const { data: settingsData, error: settingsError } = await supabaseAdmin
+        const { data: settingsData, error: settingsError } = await client
           .from('app_settings')
           .select('*')
           .order('updated_at', { ascending: false })
@@ -94,13 +87,6 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Админский клиент Supabase не настроен' },
-        { status: 500 }
-      )
-    }
-
     const body = await request.json()
     const { table, id } = body
 
@@ -108,11 +94,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Table and ID are required' }, { status: 400 })
     }
 
+    const client = client || safeSupabaseServer
+
     let error
 
     switch (table) {
       case 'pets':
-        const { error: petsError } = await supabaseAdmin
+        const { error: petsError } = await client
           .from('pets')
           .delete()
           .eq('id', id)
@@ -121,12 +109,12 @@ export async function DELETE(request: NextRequest) {
         break
 
       case 'users':
-        const { error: usersError } = await supabaseAdmin.auth.admin.deleteUser(id)
+        const { error: usersError } = await client.auth.admin.deleteUser(id)
         error = usersError
         break
 
       case 'settings':
-        const { error: settingsError } = await supabaseAdmin
+        const { error: settingsError } = await client
           .from('app_settings')
           .delete()
           .eq('id', id)
@@ -153,13 +141,6 @@ export async function DELETE(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Админский клиент Supabase не настроен' },
-        { status: 500 }
-      )
-    }
-
     const body = await request.json()
     const { table, id, data: updateData } = body
 
@@ -167,11 +148,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Table, ID and data are required' }, { status: 400 })
     }
 
+    const client = client || safeSupabaseServer
+
     let error
 
     switch (table) {
       case 'pets':
-        const { error: petsError } = await supabaseAdmin
+        const { error: petsError } = await client
           .from('pets')
           .update(updateData)
           .eq('id', id)
@@ -180,12 +163,12 @@ export async function PUT(request: NextRequest) {
         break
 
       case 'users':
-        const { error: usersError } = await supabaseAdmin.auth.admin.updateUserById(id, updateData)
+        const { error: usersError } = await client.auth.admin.updateUserById(id, updateData)
         error = usersError
         break
 
       case 'settings':
-        const { error: settingsError } = await supabaseAdmin
+        const { error: settingsError } = await client
           .from('app_settings')
           .update(updateData)
           .eq('id', id)

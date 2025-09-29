@@ -54,12 +54,14 @@ ${petData.reward ? `• Вознаграждение: ${petData.reward} ₽` : '
       message: 'Pet created and admin notification logged (email setup pending)' 
     })
 
+    // Если Supabase не настроен, просто возвращаем успех
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Pet created (email notification skipped - Supabase not configured)' 
+    })
+
   } catch (error: any) {
     console.error('Notify admin API error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
-
-
-
-
