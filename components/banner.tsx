@@ -11,14 +11,14 @@ interface Banner {
   id: string
   title: string
   description: string
-  imageUrl: string
-  linkUrl: string
+  image_url: string
+  link_url: string
   type: 'veterinary' | 'shelter' | 'shop' | 'service'
   priority: number
-  isActive: boolean
-  startDate: string
-  endDate: string
-  contactInfo?: {
+  is_active: boolean
+  start_date: string
+  end_date: string
+  contact_info?: {
     phone?: string
     address?: string
     workingHours?: string
@@ -46,8 +46,8 @@ export function Banner({ banner, onClose, showCloseButton = true, size = 'medium
   }
 
   const handleClick = () => {
-    if (banner.linkUrl) {
-      window.open(banner.linkUrl, '_blank', 'noopener,noreferrer')
+    if (banner.link_url) {
+      window.open(banner.link_url, '_blank', 'noopener,noreferrer')
     }
   }
 
@@ -149,7 +149,7 @@ export function Banner({ banner, onClose, showCloseButton = true, size = 'medium
         <div className="relative w-2/5 h-full">
           <div className="absolute inset-0 bg-gradient-to-br from-black/10 to-transparent z-10"></div>
           <Image
-            src={banner.imageUrl}
+            src={banner.image_url}
             alt={banner.title}
             fill
             className="object-cover"
@@ -171,24 +171,24 @@ export function Banner({ banner, onClose, showCloseButton = true, size = 'medium
           </div>
 
           {/* Contact info */}
-          {banner.contactInfo && (
+          {banner.contact_info && (
             <div className="mt-3 space-y-1.5">
-              {banner.contactInfo.phone && (
+              {banner.contact_info.phone && (
                 <div className="flex items-center text-xs text-gray-600 bg-white/50 rounded-lg px-2 py-1">
                   <Phone className="h-3 w-3 mr-1.5 text-blue-500" />
-                  <span className="font-medium">{banner.contactInfo.phone}</span>
+                  <span className="font-medium">{banner.contact_info.phone}</span>
                 </div>
               )}
-              {banner.contactInfo.address && (
+              {banner.contact_info.address && (
                 <div className="flex items-center text-xs text-gray-600 bg-white/50 rounded-lg px-2 py-1">
                   <MapPin className="h-3 w-3 mr-1.5 text-green-500" />
-                  <span className="line-clamp-1">{banner.contactInfo.address}</span>
+                  <span className="line-clamp-1">{banner.contact_info.address}</span>
                 </div>
               )}
-              {banner.contactInfo.workingHours && (
+              {banner.contact_info.workingHours && (
                 <div className="flex items-center text-xs text-gray-600 bg-white/50 rounded-lg px-2 py-1">
                   <Clock className="h-3 w-3 mr-1.5 text-orange-500" />
-                  <span>{banner.contactInfo.workingHours}</span>
+                  <span>{banner.contact_info.workingHours}</span>
                 </div>
               )}
             </div>
@@ -229,7 +229,7 @@ export function BannerCarousel({
   const [closedBanners, setClosedBanners] = useState<Set<string>>(new Set())
 
   const activeBanners = banners
-    .filter(banner => banner.isActive && !closedBanners.has(banner.id))
+    .filter(banner => banner.is_active && !closedBanners.has(banner.id))
     .sort((a, b) => b.priority - a.priority)
     .slice(0, maxBanners)
 
@@ -291,7 +291,7 @@ export function BannerGrid({ banners, columns = 2, maxBanners = 6 }: BannerGridP
   const [closedBanners, setClosedBanners] = useState<Set<string>>(new Set())
 
   const activeBanners = banners
-    .filter(banner => banner.isActive && !closedBanners.has(banner.id))
+    .filter(banner => banner.is_active && !closedBanners.has(banner.id))
     .sort((a, b) => b.priority - a.priority)
     .slice(0, maxBanners)
 

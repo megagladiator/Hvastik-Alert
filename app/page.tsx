@@ -71,12 +71,13 @@ export default function HomePage() {
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string>("/placeholder.svg?height=1080&width=1920")
 
   // Загрузка баннеров
-  const { banners, loading: bannersLoading } = useBanners({
+  const { banners, loading: bannersLoading, error: bannersError } = useBanners({
     limit: 6,
     activeOnly: true,
     autoRefresh: true,
     refreshInterval: 60000 // обновление каждую минуту
   })
+
   const [backgroundDarkeningPercentage, setBackgroundDarkeningPercentage] = useState<number>(50)
   
   // Обертываем setBackgroundImageUrl для логирования
@@ -723,6 +724,23 @@ export default function HomePage() {
               <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mt-4 rounded-full"></div>
             </div>
             <BannerGrid banners={banners} columns={2} maxBanners={4} />
+          </section>
+        )}
+
+        {/* Отладочная информация для баннеров */}
+        {bannersError && (
+          <section className="container mx-auto px-4 py-4">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+              <strong>Ошибка загрузки баннеров:</strong> {bannersError}
+            </div>
+          </section>
+        )}
+
+        {!bannersLoading && banners.length === 0 && !bannersError && (
+          <section className="container mx-auto px-4 py-4">
+            <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+              <strong>Информация:</strong> Баннеры не найдены или не активны
+            </div>
           </section>
         )}
 
