@@ -17,17 +17,43 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Получаем токены из URL параметров Supabase
-    const access_token = searchParams.get('access_token')
-    const refresh_token = searchParams.get('refresh_token')
-    const type = searchParams.get('type')
-    
-    if (access_token && refresh_token && type === 'recovery') {
-      setAccessToken(access_token)
-      setRefreshToken(refresh_token)
-    } else {
-      setError("Неверная ссылка для сброса пароля")
+    const checkSession = async () => {
+      try {
+        // Проверяем текущую сессию Supabase
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        console.log('🔍 Current session:', { 
+          hasSession: !!session, 
+          error: error?.message,
+          urlParams: Object.fromEntries(searchParams.entries())
+        })
+        
+        if (session) {
+          // У нас есть активная сессия - можем сбрасывать пароль
+          console.log('✅ Valid session found, ready for password reset')
+          setAccessToken('session-based')
+          setRefreshToken('session-based')
+        } else {
+          // Пытаемся получить токены из URL параметров
+          const access_token = searchParams.get('access_token')
+          const refresh_token = searchParams.get('refresh_token')
+          const type = searchParams.get('type')
+          
+          if (access_token && refresh_token && type === 'recovery') {
+            setAccessToken(access_token)
+            setRefreshToken(refresh_token)
+          } else {
+            console.log('❌ No valid session or URL params for password reset')
+            setError("Неверная ссылка для сброса пароля")
+          }
+        }
+      } catch (error) {
+        console.error('Error checking session:', error)
+        setError("Ошибка при проверке сессии")
+      }
     }
+    
+    checkSession()
   }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {

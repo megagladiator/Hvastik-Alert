@@ -6,9 +6,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { accessToken, refreshToken, newPassword } = body
 
-    if (!accessToken || !refreshToken || !newPassword) {
+    if (!newPassword) {
       return NextResponse.json({ 
-        error: 'Токены доступа и новый пароль обязательны' 
+        error: 'Новый пароль обязателен' 
       }, { status: 400 })
     }
 
@@ -22,20 +22,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Supabase not initialized' }, { status: 500 })
     }
 
-    // Устанавливаем сессию с токенами из ссылки сброса
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    })
+    // Если переданы токены, устанавливаем сессию
+    if (accessToken && refreshToken && accessToken !== 'session-based') {
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      })
 
-    if (sessionError) {
-      console.error('Error setting session:', sessionError)
-      return NextResponse.json({ 
-        error: 'Ссылка для сброса пароля недействительна или истекла' 
-      }, { status: 400 })
+      if (sessionError) {
+        console.error('Error setting session:', sessionError)
+        return NextResponse.json({ 
+          error: 'Ссылка для сброса пароля недействительна или истекла' 
+        }, { status: 400 })
+      }
     }
 
     // Обновляем пароль
+    console.log('🔄 Updating password...')
     const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword
     })
@@ -55,6 +58,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    console.log('✅ Password updated successfully')
     return NextResponse.json({
       message: 'Пароль успешно обновлен',
       success: true

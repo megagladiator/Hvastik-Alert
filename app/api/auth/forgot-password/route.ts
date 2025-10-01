@@ -30,9 +30,26 @@ export async function POST(request: NextRequest) {
     // Supabase сам вернет ошибку, если пользователь не найден
     console.log('🔍 Skipping user existence check via admin API')
 
-    // Получаем URL для сброса пароля
-    const resetUrl = getAuthUrl('/auth/reset-password', request)
+    // Получаем URL для сброса пароля через callback
+    let resetUrl = getAuthUrl('/auth/callback', request)
+    
+    // Принудительно используем продакшен URL если это не localhost
+    if (!resetUrl.includes('localhost') && !resetUrl.includes('127.0.0.1')) {
+      resetUrl = 'https://hvostikalert.ru/auth/callback'
+    }
+    
     console.log('🔗 Reset URL:', resetUrl)
+    console.log('🔍 Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL_URL: process.env.VERCEL_URL,
+      NEXTAUTH_URL: process.env.NEXTAUTH_URL
+    })
+    console.log('🔍 Request headers:', {
+      origin: request.headers.get('origin'),
+      host: request.headers.get('host'),
+      'x-forwarded-proto': request.headers.get('x-forwarded-proto'),
+      'x-forwarded-host': request.headers.get('x-forwarded-host')
+    })
     
     // Отправляем письмо для сброса пароля через обычный клиент
     console.log('📧 Sending password reset email...')
