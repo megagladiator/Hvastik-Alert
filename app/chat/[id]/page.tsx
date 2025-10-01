@@ -69,11 +69,14 @@ export default function ChatPage() {
         return
       }
 
-      // Получаем информацию о питомце
+      // Получаем информацию о питомце с данными владельца
       try {
         const { data: petData, error: petError } = await supabase
           .from("pets")
-          .select("*")
+          .select(`
+            *,
+            user_id
+          `)
           .eq("id", params.id)
           .single()
 
@@ -262,7 +265,9 @@ export default function ChatPage() {
                         🏠 Владелец питомца
                       </p>
                       <p className="text-sm text-blue-700">
-                        <strong className="text-yellow-600">Email:</strong> <span className="text-yellow-600 font-medium">{chat?.owner_email || pet.contact_email || 'Не указан'}</span>
+                        <strong className="text-yellow-600">Email:</strong> <span className="text-yellow-600 font-medium">
+                          {chat?.owner_email || (chatLoading ? 'Загружается...' : 'Скрыт для безопасности')}
+                        </span>
                       </p>
                       <p className="text-sm text-blue-700">
                         <strong>Имя:</strong> {pet.contact_name}
@@ -280,7 +285,9 @@ export default function ChatPage() {
                         👤 Абонент
                       </p>
                       <p className="text-sm text-blue-700">
-                        <strong className="text-yellow-600">Email:</strong> <span className="text-yellow-600 font-medium">{chat?.user_email || 'Загружается...'}</span>
+                        <strong className="text-yellow-600">Email:</strong> <span className="text-yellow-600 font-medium">
+                          {chat?.user_email || (chatLoading ? 'Загружается...' : 'Скрыт для безопасности')}
+                        </span>
                       </p>
                       <p className="text-sm text-blue-700">
                         <strong>Имя:</strong> {chat?.user_id === user?.id ? (user?.user_metadata?.full_name || 'Не указано') : (chat?.user_email?.split('@')[0] || 'Не указано')}

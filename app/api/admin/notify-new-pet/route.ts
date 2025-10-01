@@ -65,3 +65,7 @@ ${petData.reward ? `• Вознаграждение: ${petData.reward} ₽` : '
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
+
+
+
+

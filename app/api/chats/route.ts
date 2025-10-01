@@ -139,11 +139,52 @@ export async function GET(request: NextRequest) {
       }
 
       // Получаем email адреса для конкретного чата
-      const { data: users } = await supabaseAdmin.auth.admin.listUsers()
       const userEmailMap = new Map<string, string>()
-      users?.users.forEach(u => {
-        if (u.id === chat.user_id) userEmailMap.set(u.id, u.email || 'Неизвестно')
-        if (u.id === chat.owner_id) userEmailMap.set(u.id, u.email || 'Неизвестно')
+      
+      // Пытаемся получить пользователей по отдельности
+      try {
+        const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(chat.user_id)
+        if (!userError && userData?.user?.email) {
+          userEmailMap.set(chat.user_id, userData.user.email)
+        }
+      } catch (error) {
+        console.error('Error fetching user:', error)
+      }
+      
+      try {
+        const { data: ownerData, error: ownerError } = await supabaseAdmin.auth.admin.getUserById(chat.owner_id)
+        if (!ownerError && ownerData?.user?.email) {
+          userEmailMap.set(chat.owner_id, ownerData.user.email)
+        }
+      } catch (error) {
+        console.error('Error fetching owner:', error)
+      }
+      
+      // Если не удалось получить по отдельности, пробуем listUsers
+      if (userEmailMap.size < 2) {
+        const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers()
+        
+        if (usersError) {
+          console.error('Error fetching users:', usersError)
+        }
+        
+        users?.users.forEach(u => {
+          if (u.id === chat.user_id && !userEmailMap.has(u.id)) {
+            userEmailMap.set(u.id, u.email || 'Неизвестно')
+          }
+          if (u.id === chat.owner_id && !userEmailMap.has(u.id)) {
+            userEmailMap.set(u.id, u.email || 'Неизвестно')
+          }
+        })
+      }
+      
+      console.log('Chat users mapping:', {
+        chatId: chat.id,
+        userId: chat.user_id,
+        ownerId: chat.owner_id,
+        userEmail: userEmailMap.get(chat.user_id),
+        ownerEmail: userEmailMap.get(chat.owner_id),
+        mapSize: userEmailMap.size
       })
 
       return NextResponse.json({ 
@@ -211,13 +252,40 @@ export async function GET(request: NextRequest) {
     })
 
     const userIdsArray = Array.from(userIds)
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers()
-    
     const userEmailMap = new Map<string, string>()
-    users?.users.forEach(user => {
-      if (userIdsArray.includes(user.id)) {
-        userEmailMap.set(user.id, user.email || 'Неизвестно')
+    
+    // Пытаемся получить пользователей по отдельности для лучшей надежности
+    for (const userId of userIdsArray) {
+      try {
+        const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
+        if (!userError && userData?.user?.email) {
+          userEmailMap.set(userId, userData.user.email)
+        }
+      } catch (error) {
+        console.error(`Error fetching user ${userId}:`, error)
       }
+    }
+    
+    // Если не все пользователи получены, пробуем listUsers
+    if (userEmailMap.size < userIdsArray.length) {
+      const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers()
+      
+      if (usersError) {
+        console.error('Error fetching users for chats:', usersError)
+      }
+      
+      users?.users.forEach(user => {
+        if (userIdsArray.includes(user.id) && !userEmailMap.has(user.id)) {
+          userEmailMap.set(user.id, user.email || 'Неизвестно')
+        }
+      })
+    }
+    
+    console.log('Chats users mapping:', {
+      userIds: userIdsArray,
+      mappedEmails: Object.fromEntries(userEmailMap),
+      mapSize: userEmailMap.size,
+      totalRequested: userIdsArray.length
     })
 
     // Получаем последние сообщения для каждого чата

@@ -57,6 +57,8 @@ export function useChat({ petId, currentUserId, existingChatId }: UseChatProps) 
             setChat(existingChat)
             return existingChat
           }
+        } else {
+          console.error('Error fetching existing chat:', response.status, response.statusText)
         }
       }
 
