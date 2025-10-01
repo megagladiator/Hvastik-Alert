@@ -231,6 +231,11 @@ pm2 restart hvostik-alert
 - **Пользователь**: root
 - **Путь к проекту**: /var/www/hvostikalert_usr/
 
+### FastPanel (Панель управления)
+- **URL**: https://212.34.138.16:8888/authentication
+- **Логин**: fastuser
+- **Пароль**: Gol1234567
+
 **Подробная документация**: [DEPLOYMENT_GUIDE_COMPLETE.md](./DEPLOYMENT_GUIDE_COMPLETE.md)#   F o r c e   V e r c e l   r e d e p l o y 
  
  
