@@ -51,18 +51,25 @@ export default function AuthCallbackPage() {
           return
         }
         
-        // Если есть authorization code, обмениваем его на токены
+        // Если есть authorization code, обрабатываем его через verifyOtp
         if (code) {
-          console.log('🔑 Processing authorization code...')
-          const { data, error: codeError } = await supabase.auth.exchangeCodeForSession(code)
+          console.log('🔑 Processing authorization code via verifyOtp...')
+          
+          // Определяем тип операции
+          const otpType = type === 'recovery' ? 'recovery' : 'email'
+          
+          const { data, error: codeError } = await supabase.auth.verifyOtp({
+            token_hash: code,
+            type: otpType
+          })
           
           if (codeError) {
-            console.error('❌ Error exchanging code for session:', codeError)
-            router.push('/auth?error=code_exchange_error')
+            console.error('❌ Error verifying code:', codeError)
+            router.push('/auth?error=code_verification_error')
             return
           }
           
-          console.log('✅ Code exchanged for session successfully')
+          console.log('✅ Code verified successfully')
           
           // Если это сброс пароля, перенаправляем на страницу сброса
           if (type === 'recovery') {
