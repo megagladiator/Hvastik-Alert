@@ -11,105 +11,81 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
-  const [accessToken, setAccessToken] = useState("")
-  const [refreshToken, setRefreshToken] = useState("")
-  const [isCodeHandled, setIsCodeHandled] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Защита от повторной обработки токена
-    if (isCodeHandled) {
-      console.log('🔍 Code already handled, skipping...')
-      return
-    }
+    console.group("ResetPasswordPage Load")
 
-    // Получаем code из URL используя Next.js router
+    console.log("Full URL:", window.location.href)
+    console.log("Window location search:", window.location.search)
+    console.log("Window location hash:", window.location.hash)
+
     const code = searchParams.get('code') || new URLSearchParams(window.location.search).get('code')
-    
-    console.log('🔍 Password reset page loaded')
-    console.log('🔍 Code:', code ? 'present' : 'missing')
-    console.log('🔍 Search:', window.location.search)
-    console.log('🔍 Full URL:', window.location.href)
-    
+    console.log('Extracted code param:', code)
+
     if (!code) {
-      console.log('❌ No code found in URL')
+      console.error('Error: Code param is missing')
       setError('Код восстановления пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
-      setIsCodeHandled(true)
+      console.groupEnd()
       return
     }
     
-    // Верифицируем PKCE токен только один раз
     async function handleCode() {
       try {
-        console.log('🔄 Verifying PKCE token...')
-        const { error } = await supabase.auth.verifyOtp({
-          token_hash: code,
-          type: 'recovery'
-        })
-        
+        console.log("Calling supabase.auth.exchangeCodeForSession with code...")
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (error) {
-          console.error('❌ Error verifying token:', error)
+          console.error("Error from exchangeCodeForSession:", error)
           setError('Ошибка: ' + error.message)
-          setIsCodeHandled(true)
-          return
+        } else {
+          console.log("exchangeCodeForSession successful")
         }
-        
-        console.log('✅ Token verified successfully')
-        setAccessToken('session-ready')
-        setRefreshToken('session-ready')
-        setIsCodeHandled(true)
-      } catch (err: any) {
-        console.error('❌ Exception verifying token:', err)
+      } catch (err) {
+        console.error("Exception in handleCode:", err)
         setError('Произошла ошибка при обработке ссылки сброса пароля')
-        setIsCodeHandled(true)
+      } finally {
+        setLoading(false)
+        console.groupEnd()
       }
     }
-    
-    handleCode()
-  }, [searchParams, isCodeHandled])
 
-  async function handleSubmit(e: React.FormEvent) {
+    handleCode()
+  }, [searchParams])
+
+  async function handleSubmit(e) {
     e.preventDefault()
     setError("")
-    
+
     if (password !== confirmPassword) {
       setError("Пароли не совпадают")
       return
     }
-    
+
     if (password.length < 6) {
       setError("Пароль должен содержать минимум 6 символов")
       return
     }
-    
-    // СТАНДАРТНЫЙ ПОДХОД SUPABASE: Не проверяем токены, Supabase сам проверит сессию
-    
-    setLoading(true)
-    
-    try {
-      // Обновляем пароль (сессия уже установлена через exchangeCodeForSession)
-      console.log('🔍 Updating password...')
-      
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      })
 
+    setLoading(true)
+
+    try {
+      console.log("Calling supabase.auth.updateUser with new password...")
+      const { error } = await supabase.auth.updateUser({ password })
       if (error) {
-        console.error('❌ Error updating password:', error)
+        console.error("Error from updateUser:", error)
         setError(error.message)
+        setLoading(false)
         return
       }
-
-      console.log('✅ Password updated successfully')
+      console.log("Password successfully updated")
       setSuccess(true)
-      
-    } catch (error: any) {
-      console.error('❌ Exception updating password:', error)
+    } catch (err) {
+      console.error("Exception in updating password:", err)
       setError('Произошла ошибка при сбросе пароля')
+    } finally {
+      setLoading(false)
     }
-    
-    setLoading(false)
   }
 
   if (success) {
@@ -121,11 +97,7 @@ export default function ResetPasswordPage() {
           <p className="text-gray-600 mb-6">
             Ваш пароль был успешно обновлен. Теперь вы можете войти в систему с новым паролем.
           </p>
-          
-          <Link 
-            href="/auth" 
-            className="block w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-center"
-          >
+          <Link href="/auth" className="block w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-center">
             Войти в систему
           </Link>
         </div>
@@ -139,21 +111,12 @@ export default function ResetPasswordPage() {
         <div className="text-center">
           <div className="text-red-600 text-4xl mb-4">⚠</div>
           <h2 className="text-xl font-bold mb-4 text-red-600">Неверная ссылка</h2>
-          <p className="text-gray-600 mb-6">
-            {error}
-          </p>
-          
+          <p className="text-gray-600 mb-6">{error}</p>
           <div className="space-y-2">
-            <Link 
-              href="/auth/forgot-password" 
-              className="block w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-center"
-            >
+            <Link href="/auth/forgot-password" className="block w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-center">
               Запросить новую ссылку
             </Link>
-            <Link 
-              href="/auth" 
-              className="block w-full bg-gray-500 hover:bg-gray-600 text-white py-2 rounded text-center"
-            >
+            <Link href="/auth" className="block w-full bg-gray-500 hover:bg-gray-600 text-white py-2 rounded text-center">
               Вернуться к входу
             </Link>
           </div>
@@ -168,17 +131,8 @@ export default function ResetPasswordPage() {
       <p className="text-gray-600 mb-6">
         Введите новый пароль для вашего аккаунта
       </p>
-      
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Скрытое поле email для accessibility и менеджеров паролей */}
-        <input
-          type="email"
-          name="email"
-          autoComplete="username"
-          style={{ display: 'none' }}
-          tabIndex={-1}
-        />
-        
+        <input type="email" name="email" autoComplete="username" style={{ display: 'none' }} tabIndex={-1} />
         <input
           type="password"
           placeholder="Новый пароль"
@@ -192,7 +146,6 @@ export default function ResetPasswordPage() {
           disabled={loading}
           minLength={6}
         />
-        
         <input
           type="password"
           placeholder="Подтвердите новый пароль"
@@ -206,22 +159,19 @@ export default function ResetPasswordPage() {
           disabled={loading}
           minLength={6}
         />
-        
         {error && (
           <div className="text-red-500 text-sm p-3 bg-red-50 border border-red-200 rounded-lg">
             <div className="font-medium mb-1">Ошибка:</div>
             <div>{error}</div>
           </div>
         )}
-        
-        <button 
-          type="submit" 
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded" 
+        <button
+          type="submit"
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded"
           disabled={loading}
         >
           {loading ? "Обновление..." : "Установить новый пароль"}
         </button>
-        
         <div className="text-center">
           <Link href="/auth" className="text-blue-600 underline">
             Вернуться к входу
