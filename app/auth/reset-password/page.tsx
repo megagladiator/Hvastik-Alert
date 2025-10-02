@@ -17,41 +17,64 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // СТАНДАРТНЫЙ ПОДХОД SUPABASE: Используем onAuthStateChange
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔍 Auth state change:', event, session ? 'session exists' : 'no session')
-      
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('✅ Password recovery event detected')
-        setAccessToken('recovery-session')
-        setRefreshToken('recovery-session')
-        return
-      }
-      
-      if (session) {
-        console.log('✅ Active session found')
-        setAccessToken('active-session')
-        setRefreshToken('active-session')
-        return
-      }
-    })
-    
-    // Проверяем текущую сессию
-    const checkCurrentSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        console.log('✅ Current session found')
-        setAccessToken('current-session')
-        setRefreshToken('current-session')
-      } else {
-        console.log('❌ No current session found')
-        setError("Неверная ссылка для сброса пароля. Пожалуйста, запросите новую ссылку.")
+    const checkSession = async () => {
+      try {
+        console.log('🔍 Checking session for password reset...')
+        
+        // Проверяем hash часть URL (стандартный Supabase формат)
+        const hash = window.location.hash.substring(1)
+        const hashParams = new URLSearchParams(hash)
+        
+        const access_token = hashParams.get('access_token')
+        const refresh_token = hashParams.get('refresh_token')
+        const type = hashParams.get('type')
+        
+        console.log('🔍 Hash params:', { 
+          access_token: !!access_token, 
+          refresh_token: !!refresh_token, 
+          type,
+          fullHash: hash
+        })
+        
+        // Если есть токены в hash, устанавливаем сессию
+        if (type === 'recovery' && access_token && refresh_token) {
+          console.log('✅ Found recovery tokens in hash')
+          
+          const { data, error } = await supabase.auth.setSession({
+            access_token,
+            refresh_token
+          })
+          
+          if (error) {
+            console.error('❌ Error setting session:', error)
+            setError("Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.")
+            return
+          }
+          
+          console.log('✅ Session set successfully')
+          setAccessToken('hash-session')
+          setRefreshToken('hash-session')
+          return
+        }
+        
+        // Проверяем текущую сессию
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          console.log('✅ Current session found')
+          setAccessToken('current-session')
+          setRefreshToken('current-session')
+        } else {
+          console.log('❌ No session found')
+          setError("Неверная ссылка для сброса пароля. Пожалуйста, запросите новую ссылку.")
+        }
+        
+      } catch (error) {
+        console.error('❌ Error checking session:', error)
+        setError("Ошибка при проверке сессии")
       }
     }
     
-    checkCurrentSession()
-    
-    return () => subscription.unsubscribe()
+    checkSession()
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -120,14 +143,14 @@ export default function ResetPasswordPage() {
     )
   }
 
-  if (!accessToken || !refreshToken) {
+  if (error) {
     return (
       <div className="max-w-md w-full mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
         <div className="text-center">
           <div className="text-red-600 text-4xl mb-4">⚠</div>
           <h2 className="text-xl font-bold mb-4 text-red-600">Неверная ссылка</h2>
           <p className="text-gray-600 mb-6">
-            Ссылка для сброса пароля недействительна или истекла.
+            {error}
           </p>
           
           <div className="space-y-2">
