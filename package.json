@@ -1,6 +1,6 @@
 {
   "name": "hvostik-alert",
-  "version": "1.2.62",
+  "version": "1.2.63",
   "private": true,
   "scripts": {
     "build": "next build",

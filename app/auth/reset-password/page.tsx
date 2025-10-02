@@ -31,23 +31,26 @@ export default function ResetPasswordPage() {
       return
     }
     
-    // Обмениваем код на сессию
+    // Верифицируем PKCE токен
     async function handleCode() {
       try {
-        console.log('🔄 Exchanging code for session...')
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        console.log('🔄 Verifying PKCE token...')
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: code,
+          type: 'recovery'
+        })
         
         if (error) {
-          console.error('❌ Error exchanging code:', error)
+          console.error('❌ Error verifying token:', error)
           setError('Ошибка: ' + error.message)
           return
         }
         
-        console.log('✅ Code exchanged successfully')
+        console.log('✅ Token verified successfully')
         setAccessToken('session-ready')
         setRefreshToken('session-ready')
       } catch (err: any) {
-        console.error('❌ Exception exchanging code:', err)
+        console.error('❌ Exception verifying token:', err)
         setError('Произошла ошибка при обработке ссылки сброса пароля')
       }
     }
