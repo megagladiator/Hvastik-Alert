@@ -23,10 +23,13 @@ export default function ResetPasswordPage() {
     
     console.log('🔍 Password reset page loaded', { 
       code: code ? 'present' : 'missing',
-      search: window.location.search
+      search: window.location.search,
+      fullUrl: window.location.href,
+      allParams: Object.fromEntries(urlParams.entries())
     })
     
     if (!code) {
+      console.log('❌ No code found in URL')
       setError('Код восстановления пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
       return
     }
