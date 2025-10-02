@@ -38,6 +38,11 @@ export async function POST(request: NextRequest) {
       resetUrl = 'https://hvostikalert.ru/auth/callback'
     }
     
+    // Убеждаемся, что URL начинается с https://
+    if (!resetUrl.startsWith('http')) {
+      resetUrl = `https://${resetUrl}`
+    }
+    
     console.log('🔗 Reset URL:', resetUrl)
     console.log('🔍 Environment check:', {
       NODE_ENV: process.env.NODE_ENV,
@@ -53,11 +58,19 @@ export async function POST(request: NextRequest) {
     
     // Отправляем письмо для сброса пароля через обычный клиент
     console.log('📧 Sending password reset email...')
+    console.log('📧 Using redirect URL:', resetUrl)
+    
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: resetUrl,
     })
     
-    console.log('📧 Password reset request result:', { email, resetUrl, error: error?.message })
+    console.log('📧 Password reset request result:', { 
+      email, 
+      resetUrl, 
+      error: error?.message,
+      errorCode: error?.code,
+      fullError: error
+    })
 
     if (error) {
       console.error('Error sending password reset email:', error)
