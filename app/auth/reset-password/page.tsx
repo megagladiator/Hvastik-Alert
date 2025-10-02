@@ -33,13 +33,17 @@ export default function ResetPasswordPage() {
     
     async function handleCode() {
       try {
-        console.log("Calling supabase.auth.exchangeCodeForSession with code...")
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        console.log("Calling supabase.auth.verifyOtp with code...")
+        const { data, error } = await supabase.auth.verifyOtp({
+          token_hash: code,
+          type: 'recovery'
+        })
         if (error) {
-          console.error("Error from exchangeCodeForSession:", error)
+          console.error("Error from verifyOtp:", error)
           setError('Ошибка: ' + error.message)
         } else {
-          console.log("exchangeCodeForSession successful")
+          console.log("verifyOtp successful", data)
+          // После успешной верификации токена, пользователь может сбросить пароль
         }
       } catch (err) {
         console.error("Exception in handleCode:", err)
