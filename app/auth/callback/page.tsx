@@ -19,6 +19,7 @@ export default function AuthCallbackPage() {
         const token = urlParams.get('token')
         const access_token = urlParams.get('access_token')
         const refresh_token = urlParams.get('refresh_token')
+        const code = urlParams.get('code')
         
         // Проверяем на ошибки
         const error = urlParams.get('error')
@@ -30,6 +31,7 @@ export default function AuthCallbackPage() {
           token: token ? 'present' : 'missing',
           access_token: access_token ? 'present' : 'missing',
           refresh_token: refresh_token ? 'present' : 'missing',
+          code: code ? 'present' : 'missing',
           error,
           errorCode,
           errorDescription
@@ -46,6 +48,31 @@ export default function AuthCallbackPage() {
           } else {
             router.push('/auth?error=callback_error')
           }
+          return
+        }
+        
+        // Если есть authorization code, обмениваем его на токены
+        if (code) {
+          console.log('🔑 Processing authorization code...')
+          const { data, error: codeError } = await supabase.auth.exchangeCodeForSession(code)
+          
+          if (codeError) {
+            console.error('❌ Error exchanging code for session:', codeError)
+            router.push('/auth?error=code_exchange_error')
+            return
+          }
+          
+          console.log('✅ Code exchanged for session successfully')
+          
+          // Если это сброс пароля, перенаправляем на страницу сброса
+          if (type === 'recovery') {
+            console.log('🔄 Redirecting to password reset page')
+            router.push('/auth/reset-password')
+            return
+          }
+          
+          // Обычная аутентификация - перенаправляем на главную
+          router.push('/')
           return
         }
         
