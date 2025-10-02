@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       'x-forwarded-host': request.headers.get('x-forwarded-host')
     })
     
-    // Отправляем письмо для сброса пароля через обычный клиент
+    // Отправляем письмо для сброса пароля через стандартный Supabase API
     console.log('📧 Sending password reset email...')
     console.log('📧 Using redirect URL:', resetUrl)
     
