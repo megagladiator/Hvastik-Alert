@@ -30,12 +30,12 @@ export async function POST(request: NextRequest) {
     // Supabase сам вернет ошибку, если пользователь не найден
     console.log('🔍 Skipping user existence check via admin API')
 
-    // Получаем URL для сброса пароля через callback
-    let resetUrl = getAuthUrl('/auth/callback', request)
+    // Получаем URL для сброса пароля - используем reset-password напрямую
+    let resetUrl = getAuthUrl('/auth/reset-password', request)
     
     // Принудительно используем продакшен URL если это не localhost
     if (!resetUrl.includes('localhost') && !resetUrl.includes('127.0.0.1')) {
-      resetUrl = 'https://hvostikalert.ru/auth/callback'
+      resetUrl = 'https://hvostikalert.ru/auth/reset-password'
     }
     
     // Убеждаемся, что URL начинается с https://

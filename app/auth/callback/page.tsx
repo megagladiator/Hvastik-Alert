@@ -54,9 +54,13 @@ export default function AuthCallbackPage() {
         // Если есть authorization code, обрабатываем его через verifyOtp
         if (code) {
           console.log('🔑 Processing authorization code via verifyOtp...')
+          console.log('🔍 Code type from URL:', type)
           
-          // Определяем тип операции
-          const otpType = type === 'recovery' ? 'recovery' : 'email'
+          // Для сброса пароля всегда используем тип 'recovery'
+          // Если type не указан, но это код из email для сброса пароля, используем 'recovery'
+          const otpType = type === 'recovery' ? 'recovery' : 'recovery'
+          
+          console.log('🔍 Using OTP type:', otpType)
           
           const { data, error: codeError } = await supabase.auth.verifyOtp({
             token_hash: code,
@@ -65,21 +69,21 @@ export default function AuthCallbackPage() {
           
           if (codeError) {
             console.error('❌ Error verifying code:', codeError)
-            router.push('/auth?error=code_verification_error')
+            
+            // Если код истек или недействителен, перенаправляем на forgot-password с ошибкой
+            if (codeError.message.includes('invalid') || codeError.message.includes('expired')) {
+              router.push('/auth/forgot-password?error=link_expired')
+            } else {
+              router.push('/auth?error=code_verification_error')
+            }
             return
           }
           
           console.log('✅ Code verified successfully')
           
-          // Если это сброс пароля, перенаправляем на страницу сброса
-          if (type === 'recovery') {
-            console.log('🔄 Redirecting to password reset page')
-            router.push('/auth/reset-password')
-            return
-          }
-          
-          // Обычная аутентификация - перенаправляем на главную
-          router.push('/')
+          // После успешной верификации кода для сброса пароля, перенаправляем на страницу сброса
+          console.log('🔄 Redirecting to password reset page')
+          router.push('/auth/reset-password')
           return
         }
         
