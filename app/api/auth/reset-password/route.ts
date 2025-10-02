@@ -3,24 +3,33 @@ import { supabase } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔄 Password reset API called')
+    
     const body = await request.json()
     const { newPassword } = body
 
+    console.log('🔍 Request body:', { newPassword: newPassword ? 'present' : 'missing' })
+
     if (!newPassword) {
+      console.log('❌ No password provided')
       return NextResponse.json({ 
         error: 'Новый пароль обязателен' 
       }, { status: 400 })
     }
 
     if (newPassword.length < 6) {
+      console.log('❌ Password too short')
       return NextResponse.json({ 
         error: 'Пароль должен содержать минимум 6 символов' 
       }, { status: 400 })
     }
 
     if (!supabase) {
+      console.log('❌ Supabase not initialized')
       return NextResponse.json({ error: 'Supabase not initialized' }, { status: 500 })
     }
+
+    console.log('✅ Supabase client available')
 
     // ПРОСТОЙ ПОДХОД: Пытаемся обновить пароль
     // Если нет сессии, Supabase вернет ошибку
@@ -57,10 +66,18 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('Error in reset password API:', error)
+    console.error('❌ Error in reset password API:', error)
+    console.error('❌ Error stack:', error.stack)
+    console.error('❌ Error details:', {
+      message: error.message,
+      name: error.name,
+      cause: error.cause
+    })
+    
     return NextResponse.json({ 
       error: 'Произошла ошибка при сбросе пароля',
-      details: error.message 
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     }, { status: 500 })
   }
 }
