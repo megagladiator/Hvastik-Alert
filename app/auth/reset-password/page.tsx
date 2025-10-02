@@ -21,12 +21,11 @@ export default function ResetPasswordPage() {
     const urlParams = new URLSearchParams(window.location.search)
     const code = urlParams.get('code')
     
-    console.log('🔍 Password reset page loaded', { 
-      code: code ? 'present' : 'missing',
-      search: window.location.search,
-      fullUrl: window.location.href,
-      allParams: Object.fromEntries(urlParams.entries())
-    })
+    console.log('🔍 Password reset page loaded')
+    console.log('🔍 Code:', code ? 'present' : 'missing')
+    console.log('🔍 Search:', window.location.search)
+    console.log('🔍 Full URL:', window.location.href)
+    console.log('🔍 All params:', Object.fromEntries(urlParams.entries()))
     
     if (!code) {
       console.log('❌ No code found in URL')
