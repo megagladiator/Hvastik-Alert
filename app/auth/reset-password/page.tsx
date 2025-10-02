@@ -17,86 +17,42 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        console.log('🔍 Checking session for password reset...')
-        
-        // СТАНДАРТНЫЙ ПОДХОД SUPABASE: Проверяем hash часть URL
-        const hash = window.location.hash.substring(1)
-        const hashParams = new URLSearchParams(hash)
-        
-        const access_token = hashParams.get('access_token')
-        const refresh_token = hashParams.get('refresh_token')
-        const expires_in = hashParams.get('expires_in')
-        const token_type = hashParams.get('token_type')
-        const type = hashParams.get('type')
-        
-        console.log('🔍 Hash params (стандартный Supabase):', { 
-          access_token: !!access_token, 
-          refresh_token: !!refresh_token, 
-          expires_in,
-          token_type,
-          type,
-          fullHash: hash
-        })
-        
-        // Если это ссылка для восстановления пароля (стандартный формат)
-        if (type === 'recovery' && access_token && refresh_token) {
-          console.log('✅ Found standard Supabase recovery tokens in hash')
-          
-          try {
-            const { data, error } = await supabase.auth.setSession({
-              access_token,
-              refresh_token
-            })
-            
-            if (error) {
-              console.error('❌ Error setting session:', error)
-              setError("Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.")
-              return
-            }
-            
-            console.log('✅ Session set successfully for password recovery')
-            setAccessToken(access_token)
-            setRefreshToken(refresh_token)
-            return
-          } catch (error) {
-            console.error('❌ Error processing recovery tokens:', error)
-            setError("Ошибка при обработке ссылки сброса пароля.")
-            return
-          }
-        }
-        
-        // Fallback: проверяем query параметры (если hash не содержит токены)
-        const queryAccessToken = searchParams.get('access_token')
-        const queryRefreshToken = searchParams.get('refresh_token')
-        const queryType = searchParams.get('type')
-        
-        console.log('🔍 Query params (fallback):', { 
-          access_token: !!queryAccessToken, 
-          refresh_token: !!queryRefreshToken, 
-          type: queryType 
-        })
-        
-        if (queryType === 'recovery' && queryAccessToken && queryRefreshToken) {
-          console.log('✅ Found recovery tokens in query params (fallback)')
-          setAccessToken(queryAccessToken)
-          setRefreshToken(queryRefreshToken)
-          return
-        }
-        
-        // Если нет токенов ни в hash, ни в query
-        console.log('❌ No valid recovery tokens found in URL')
+    // СТАНДАРТНЫЙ ПОДХОД SUPABASE: Используем onAuthStateChange
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔍 Auth state change:', event, session ? 'session exists' : 'no session')
+      
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('✅ Password recovery event detected')
+        setAccessToken('recovery-session')
+        setRefreshToken('recovery-session')
+        return
+      }
+      
+      if (session) {
+        console.log('✅ Active session found')
+        setAccessToken('active-session')
+        setRefreshToken('active-session')
+        return
+      }
+    })
+    
+    // Проверяем текущую сессию
+    const checkCurrentSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        console.log('✅ Current session found')
+        setAccessToken('current-session')
+        setRefreshToken('current-session')
+      } else {
+        console.log('❌ No current session found')
         setError("Неверная ссылка для сброса пароля. Пожалуйста, запросите новую ссылку.")
-        
-      } catch (error) {
-        console.error('❌ Error checking session:', error)
-        setError("Ошибка при проверке сессии")
       }
     }
     
-    checkSession()
-  }, [searchParams])
+    checkCurrentSession()
+    
+    return () => subscription.unsubscribe()
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -112,10 +68,7 @@ export default function ResetPasswordPage() {
       return
     }
     
-    if (!accessToken || !refreshToken) {
-      setError("Отсутствуют токены для сброса пароля")
-      return
-    }
+    // СТАНДАРТНЫЙ ПОДХОД SUPABASE: Не проверяем токены, Supabase сам проверит сессию
     
     setLoading(true)
     
@@ -126,8 +79,6 @@ export default function ResetPasswordPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          accessToken,
-          refreshToken,
           newPassword: password 
         }),
       })

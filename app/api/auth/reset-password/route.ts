@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { accessToken, refreshToken, newPassword } = body
+    const { newPassword } = body
 
     if (!newPassword) {
       return NextResponse.json({ 
@@ -22,20 +22,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Supabase not initialized' }, { status: 500 })
     }
 
-    // Если переданы токены, устанавливаем сессию
-    if (accessToken && refreshToken && accessToken !== 'session-based') {
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      })
-
-      if (sessionError) {
-        console.error('Error setting session:', sessionError)
-        return NextResponse.json({ 
-          error: 'Ссылка для сброса пароля недействительна или истекла' 
-        }, { status: 400 })
-      }
-    }
+    // СТАНДАРТНЫЙ ПОДХОД SUPABASE: Просто обновляем пароль
+    // Supabase автоматически проверит сессию
 
     // Обновляем пароль
     console.log('🔄 Updating password...')
