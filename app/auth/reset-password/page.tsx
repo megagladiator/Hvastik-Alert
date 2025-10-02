@@ -17,15 +17,13 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Получаем code из URL (PKCE flow)
-    const urlParams = new URLSearchParams(window.location.search)
-    const code = urlParams.get('code')
+    // Получаем code из URL используя Next.js router
+    const code = searchParams.get('code') || new URLSearchParams(window.location.search).get('code')
     
     console.log('🔍 Password reset page loaded')
     console.log('🔍 Code:', code ? 'present' : 'missing')
     console.log('🔍 Search:', window.location.search)
     console.log('🔍 Full URL:', window.location.href)
-    console.log('🔍 All params:', Object.fromEntries(urlParams.entries()))
     
     if (!code) {
       console.log('❌ No code found in URL')
@@ -41,7 +39,7 @@ export default function ResetPasswordPage() {
         
         if (error) {
           console.error('❌ Error exchanging code:', error)
-          setError(error.message)
+          setError('Ошибка: ' + error.message)
           return
         }
         
@@ -55,7 +53,7 @@ export default function ResetPasswordPage() {
     }
     
     handleCode()
-  }, [])
+  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -158,6 +156,15 @@ export default function ResetPasswordPage() {
       </p>
       
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Скрытое поле email для accessibility и менеджеров паролей */}
+        <input
+          type="email"
+          name="email"
+          autoComplete="username"
+          style={{ display: 'none' }}
+          tabIndex={-1}
+        />
+        
         <input
           type="password"
           placeholder="Новый пароль"
