@@ -21,23 +21,55 @@ export default function ResetPasswordPage() {
       try {
         console.log('🔍 Checking session for password reset...')
         
-        // Проверяем hash часть URL (стандартный Supabase формат)
+        // Проверяем query параметры (PKCE токен)
+        const urlParams = new URLSearchParams(window.location.search)
+        const token = urlParams.get('token')
+        const type = urlParams.get('type')
+        
+        console.log('🔍 Query params:', { 
+          token: !!token,
+          type,
+          fullUrl: window.location.href
+        })
+        
+        // Если есть PKCE токен, обрабатываем его
+        if (token && type === 'recovery') {
+          console.log('✅ Found PKCE recovery token')
+          
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: 'recovery'
+          })
+          
+          if (error) {
+            console.error('❌ Error verifying PKCE token:', error)
+            setError("Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.")
+            return
+          }
+          
+          console.log('✅ PKCE token verified successfully')
+          setAccessToken('pkce-verified')
+          setRefreshToken('pkce-verified')
+          return
+        }
+        
+        // Проверяем hash часть URL (fallback для access_token/refresh_token)
         const hash = window.location.hash.substring(1)
         const hashParams = new URLSearchParams(hash)
         
         const access_token = hashParams.get('access_token')
         const refresh_token = hashParams.get('refresh_token')
-        const type = hashParams.get('type')
+        const hashType = hashParams.get('type')
         
         console.log('🔍 Hash params:', { 
           access_token: !!access_token, 
           refresh_token: !!refresh_token, 
-          type,
+          type: hashType,
           fullHash: hash
         })
         
         // Если есть токены в hash, устанавливаем сессию
-        if (type === 'recovery' && access_token && refresh_token) {
+        if (hashType === 'recovery' && access_token && refresh_token) {
           console.log('✅ Found recovery tokens in hash')
           
           const { data, error } = await supabase.auth.setSession({
