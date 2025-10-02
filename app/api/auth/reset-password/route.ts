@@ -30,6 +30,12 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Supabase client available')
+    
+    // Проверяем переменные окружения
+    console.log('🔍 Environment check:', {
+      SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'present' : 'missing',
+      SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'present' : 'missing'
+    })
 
     // ПРОСТОЙ ПОДХОД: Пытаемся обновить пароль
     // Если нет сессии, Supabase вернет ошибку
