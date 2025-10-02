@@ -17,10 +17,34 @@ export default function AuthCallbackPage() {
         const urlParams = new URLSearchParams(window.location.search)
         const type = urlParams.get('type')
         const token = urlParams.get('token')
+        const access_token = urlParams.get('access_token')
+        const refresh_token = urlParams.get('refresh_token')
         
-        console.log('🔍 URL params:', { type, token: token ? 'present' : 'missing' })
+        console.log('🔍 URL params:', { 
+          type, 
+          token: token ? 'present' : 'missing',
+          access_token: access_token ? 'present' : 'missing',
+          refresh_token: refresh_token ? 'present' : 'missing'
+        })
         
-        // Обрабатываем callback через Supabase
+        // Если есть токены в URL, устанавливаем сессию
+        if (access_token && refresh_token) {
+          console.log('🔑 Setting session from URL tokens...')
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token,
+            refresh_token
+          })
+          
+          if (sessionError) {
+            console.error('❌ Error setting session:', sessionError)
+            router.push('/auth?error=session_error')
+            return
+          }
+          
+          console.log('✅ Session set successfully')
+        }
+        
+        // Проверяем текущую сессию
         const { data, error } = await supabase.auth.getSession()
         
         console.log('🔍 Session data:', { 
