@@ -42,6 +42,15 @@ export default function AuthCallbackPage() {
           }
           
           console.log('✅ Session set successfully')
+        } else if (token && type === 'recovery') {
+          // Обрабатываем PKCE токен для сброса пароля
+          console.log('🔑 Processing PKCE token for password recovery...')
+          
+          // Для сброса пароля нам нужно обработать токен по-другому
+          // Перенаправляем сразу на страницу сброса пароля с токеном
+          console.log('🔄 Redirecting to password reset with token')
+          router.push(`/auth/reset-password?token=${token}&type=${type}`)
+          return
         }
         
         // Проверяем текущую сессию

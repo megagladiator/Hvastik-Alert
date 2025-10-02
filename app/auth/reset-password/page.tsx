@@ -39,14 +39,41 @@ export default function ResetPasswordPage() {
           // Пытаемся получить токены из URL параметров
           const access_token = searchParams.get('access_token')
           const refresh_token = searchParams.get('refresh_token')
+          const token = searchParams.get('token')
           const type = searchParams.get('type')
           
-          console.log('🔍 URL params:', { access_token: !!access_token, refresh_token: !!refresh_token, type })
+          console.log('🔍 URL params:', { 
+            access_token: !!access_token, 
+            refresh_token: !!refresh_token, 
+            token: !!token,
+            type 
+          })
           
           if (access_token && refresh_token && type === 'recovery') {
-            console.log('✅ Found tokens in URL params')
+            console.log('✅ Found access/refresh tokens in URL params')
             setAccessToken(access_token)
             setRefreshToken(refresh_token)
+          } else if (token && type === 'recovery') {
+            console.log('✅ Found PKCE token for password recovery')
+            // Для PKCE токена нам нужно обработать его через Supabase
+            try {
+              const { data, error } = await supabase.auth.verifyOtp({
+                token_hash: token,
+                type: 'recovery'
+              })
+              
+              if (error) {
+                console.error('❌ Error verifying PKCE token:', error)
+                setError("Неверная ссылка для сброса пароля. Пожалуйста, запросите новую ссылку.")
+              } else {
+                console.log('✅ PKCE token verified successfully')
+                setAccessToken('pkce-verified')
+                setRefreshToken('pkce-verified')
+              }
+            } catch (error) {
+              console.error('❌ Error processing PKCE token:', error)
+              setError("Ошибка при обработке ссылки сброса пароля.")
+            }
           } else {
             console.log('❌ No valid session or URL params for password reset')
             setError("Неверная ссылка для сброса пароля. Пожалуйста, запросите новую ссылку.")
