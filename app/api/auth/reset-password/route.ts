@@ -38,34 +38,42 @@ export async function POST(request: NextRequest) {
     })
 
     // ПРОСТОЙ ПОДХОД: Пытаемся обновить пароль
-    // Если нет сессии, Supabase вернет ошибку
     console.log('🔄 Updating password...')
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword
-    })
+    
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      })
 
-    if (updateError) {
-      console.error('Error updating password:', updateError)
-      
-      if (updateError.message.includes('session_not_found') || updateError.message.includes('invalid_grant')) {
+      if (updateError) {
+        console.error('❌ Error updating password:', updateError)
+        
+        if (updateError.message.includes('session_not_found') || updateError.message.includes('invalid_grant')) {
+          return NextResponse.json({ 
+            error: 'Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.' 
+          }, { status: 400 })
+        }
+        
+        if (updateError.message.includes('Password should be at least')) {
+          return NextResponse.json({ 
+            error: 'Пароль слишком слабый. Используйте более сложный пароль' 
+          }, { status: 400 })
+        }
+        
         return NextResponse.json({ 
-          error: 'Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.' 
-        }, { status: 400 })
+          error: 'Произошла ошибка при обновлении пароля',
+          details: updateError.message 
+        }, { status: 500 })
       }
-      
-      if (updateError.message.includes('Password should be at least')) {
-        return NextResponse.json({ 
-          error: 'Пароль слишком слабый. Используйте более сложный пароль' 
-        }, { status: 400 })
-      }
-      
+
+      console.log('✅ Password updated successfully')
+    } catch (updateError: any) {
+      console.error('❌ Exception updating password:', updateError)
       return NextResponse.json({ 
         error: 'Произошла ошибка при обновлении пароля',
         details: updateError.message 
       }, { status: 500 })
     }
-
-    console.log('✅ Password updated successfully')
     return NextResponse.json({
       message: 'Пароль успешно обновлен',
       success: true
