@@ -17,20 +17,26 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Получаем токен из URL
-    const token = searchParams.get('token')
-    const type = searchParams.get('type')
+    // Получаем access_token из hash (стандартный Supabase flow)
+    const hash = window.location.hash
+    const params = new URLSearchParams(hash.substring(1))
+    const accessToken = params.get('access_token')
+    const refreshToken = params.get('refresh_token')
     
-    console.log('🔍 Password reset page loaded', { token: token ? 'present' : 'missing', type })
+    console.log('🔍 Password reset page loaded', { 
+      accessToken: accessToken ? 'present' : 'missing',
+      refreshToken: refreshToken ? 'present' : 'missing',
+      hash: window.location.hash
+    })
     
-    if (!token) {
+    if (!accessToken) {
       setError('Токен сброса пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
       return
     }
     
-    setAccessToken('ready')
-    setRefreshToken('ready')
-  }, [searchParams])
+    setAccessToken(accessToken)
+    setRefreshToken(refreshToken || '')
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -51,30 +57,25 @@ export default function ResetPasswordPage() {
     setLoading(true)
     
     try {
-      // Получаем токен из URL
-      const token = searchParams.get('token')
-      const type = searchParams.get('type') || 'recovery'
+      // Используем стандартный Supabase метод updateUser с accessToken
+      console.log('🔍 Updating password with access token...')
       
-      const response = await fetch(`/api/auth/reset-password?token=${token}&type=${type}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          newPassword: password 
-        }),
-      })
+      const { error } = await supabase.auth.updateUser(
+        { password: password },
+        { accessToken: accessToken }
+      )
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || 'Произошла ошибка при сбросе пароля')
+      if (error) {
+        console.error('❌ Error updating password:', error)
+        setError(error.message)
         return
       }
 
+      console.log('✅ Password updated successfully')
       setSuccess(true)
       
     } catch (error: any) {
+      console.error('❌ Exception updating password:', error)
       setError('Произошла ошибка при сбросе пароля')
     }
     
