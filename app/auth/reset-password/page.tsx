@@ -59,30 +59,17 @@ export default function ResetPasswordPage() {
     setLoading(true)
     
     try {
-      // Для PKCE токенов используем verifyOtp сначала
-      console.log('🔍 Verifying PKCE token and updating password...')
+      // Используем правильный подход из документации Supabase
+      console.log('🔍 Updating password with access token...')
       
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        token_hash: accessToken,
-        type: 'recovery'
-      })
+      const { data, error } = await supabase.auth.updateUser(
+        { password: password },
+        { accessToken: accessToken }
+      )
 
-      if (verifyError) {
-        console.error('❌ Error verifying token:', verifyError)
-        setError('Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.')
-        return
-      }
-
-      console.log('✅ Token verified, updating password...')
-      
-      // Теперь обновляем пароль
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password
-      })
-
-      if (updateError) {
-        console.error('❌ Error updating password:', updateError)
-        setError(updateError.message)
+      if (error) {
+        console.error('❌ Error updating password:', error)
+        setError(error.message)
         return
       }
 
