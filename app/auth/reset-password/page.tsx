@@ -17,25 +17,27 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Получаем access_token из hash (стандартный Supabase flow)
-    const hash = window.location.hash
-    const params = new URLSearchParams(hash.substring(1))
-    const accessToken = params.get('access_token')
-    const refreshToken = params.get('refresh_token')
+    // Получаем токен из URL (может быть в query или hash)
+    const searchParams = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1))
+    
+    const token = searchParams.get('token') || hashParams.get('access_token')
+    const type = searchParams.get('type') || 'recovery'
     
     console.log('🔍 Password reset page loaded', { 
-      accessToken: accessToken ? 'present' : 'missing',
-      refreshToken: refreshToken ? 'present' : 'missing',
+      token: token ? 'present' : 'missing',
+      type,
+      search: window.location.search,
       hash: window.location.hash
     })
     
-    if (!accessToken) {
+    if (!token) {
       setError('Токен сброса пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
       return
     }
     
-    setAccessToken(accessToken)
-    setRefreshToken(refreshToken || '')
+    setAccessToken(token)
+    setRefreshToken('')
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -57,17 +59,30 @@ export default function ResetPasswordPage() {
     setLoading(true)
     
     try {
-      // Используем стандартный Supabase метод updateUser с accessToken
-      console.log('🔍 Updating password with access token...')
+      // Для PKCE токенов используем verifyOtp сначала
+      console.log('🔍 Verifying PKCE token and updating password...')
       
-      const { error } = await supabase.auth.updateUser(
-        { password: password },
-        { accessToken: accessToken }
-      )
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash: accessToken,
+        type: 'recovery'
+      })
 
-      if (error) {
-        console.error('❌ Error updating password:', error)
-        setError(error.message)
+      if (verifyError) {
+        console.error('❌ Error verifying token:', verifyError)
+        setError('Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.')
+        return
+      }
+
+      console.log('✅ Token verified, updating password...')
+      
+      // Теперь обновляем пароль
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: password
+      })
+
+      if (updateError) {
+        console.error('❌ Error updating password:', updateError)
+        setError(updateError.message)
         return
       }
 
