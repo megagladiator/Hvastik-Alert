@@ -22,10 +22,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Supabase not initialized' }, { status: 500 })
     }
 
-    // СТАНДАРТНЫЙ ПОДХОД SUPABASE: Просто обновляем пароль
-    // Supabase автоматически проверит сессию
-
-    // Обновляем пароль
+    // ПРОСТОЙ ПОДХОД: Пытаемся обновить пароль
+    // Если нет сессии, Supabase вернет ошибку
     console.log('🔄 Updating password...')
     const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword
@@ -33,6 +31,12 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error('Error updating password:', updateError)
+      
+      if (updateError.message.includes('session_not_found') || updateError.message.includes('invalid_grant')) {
+        return NextResponse.json({ 
+          error: 'Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.' 
+        }, { status: 400 })
+      }
       
       if (updateError.message.includes('Password should be at least')) {
         return NextResponse.json({ 

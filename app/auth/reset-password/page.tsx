@@ -17,96 +17,11 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        console.log('🔍 Checking session for password reset...')
-        
-        // Проверяем query параметры (PKCE токен)
-        const urlParams = new URLSearchParams(window.location.search)
-        const token = urlParams.get('token')
-        const type = urlParams.get('type')
-        
-        console.log('🔍 Query params:', { 
-          token: !!token,
-          type,
-          fullUrl: window.location.href
-        })
-        
-        // Если есть PKCE токен, обрабатываем его
-        if (token && type === 'recovery') {
-          console.log('✅ Found PKCE recovery token')
-          
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'recovery'
-          })
-          
-          if (error) {
-            console.error('❌ Error verifying PKCE token:', error)
-            setError("Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.")
-            return
-          }
-          
-          console.log('✅ PKCE token verified successfully')
-          setAccessToken('pkce-verified')
-          setRefreshToken('pkce-verified')
-          return
-        }
-        
-        // Проверяем hash часть URL (fallback для access_token/refresh_token)
-        const hash = window.location.hash.substring(1)
-        const hashParams = new URLSearchParams(hash)
-        
-        const access_token = hashParams.get('access_token')
-        const refresh_token = hashParams.get('refresh_token')
-        const hashType = hashParams.get('type')
-        
-        console.log('🔍 Hash params:', { 
-          access_token: !!access_token, 
-          refresh_token: !!refresh_token, 
-          type: hashType,
-          fullHash: hash
-        })
-        
-        // Если есть токены в hash, устанавливаем сессию
-        if (hashType === 'recovery' && access_token && refresh_token) {
-          console.log('✅ Found recovery tokens in hash')
-          
-          const { data, error } = await supabase.auth.setSession({
-            access_token,
-            refresh_token
-          })
-          
-          if (error) {
-            console.error('❌ Error setting session:', error)
-            setError("Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.")
-            return
-          }
-          
-          console.log('✅ Session set successfully')
-          setAccessToken('hash-session')
-          setRefreshToken('hash-session')
-          return
-        }
-        
-        // Проверяем текущую сессию
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          console.log('✅ Current session found')
-          setAccessToken('current-session')
-          setRefreshToken('current-session')
-        } else {
-          console.log('❌ No session found')
-          setError("Неверная ссылка для сброса пароля. Пожалуйста, запросите новую ссылку.")
-        }
-        
-      } catch (error) {
-        console.error('❌ Error checking session:', error)
-        setError("Ошибка при проверке сессии")
-      }
-    }
-    
-    checkSession()
+    // ПРОСТОЙ ПОДХОД: Показываем форму сброса пароля всегда
+    // Supabase сам проверит сессию при обновлении пароля
+    console.log('🔍 Password reset page loaded')
+    setAccessToken('ready')
+    setRefreshToken('ready')
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
