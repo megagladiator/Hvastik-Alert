@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 
 export default function ForgotPasswordPage() {
@@ -10,6 +10,21 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Проверяем параметры ошибки из URL
+  useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam) {
+      if (errorParam === 'link_expired') {
+        setError('Ссылка для сброса пароля истекла. Пожалуйста, запросите новую ссылку.')
+      } else if (errorParam === 'access_denied') {
+        setError('Доступ запрещен. Пожалуйста, запросите новую ссылку для сброса пароля.')
+      } else {
+        setError('Произошла ошибка при обработке ссылки. Пожалуйста, попробуйте снова.')
+      }
+    }
+  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

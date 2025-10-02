@@ -20,12 +20,34 @@ export default function AuthCallbackPage() {
         const access_token = urlParams.get('access_token')
         const refresh_token = urlParams.get('refresh_token')
         
+        // Проверяем на ошибки
+        const error = urlParams.get('error')
+        const errorCode = urlParams.get('error_code')
+        const errorDescription = urlParams.get('error_description')
+        
         console.log('🔍 URL params:', { 
           type, 
           token: token ? 'present' : 'missing',
           access_token: access_token ? 'present' : 'missing',
-          refresh_token: refresh_token ? 'present' : 'missing'
+          refresh_token: refresh_token ? 'present' : 'missing',
+          error,
+          errorCode,
+          errorDescription
         })
+        
+        // Если есть ошибка, обрабатываем её
+        if (error) {
+          console.error('❌ Auth callback error:', { error, errorCode, errorDescription })
+          
+          if (errorCode === 'otp_expired') {
+            router.push('/auth/forgot-password?error=link_expired')
+          } else if (errorCode === 'access_denied') {
+            router.push('/auth/forgot-password?error=access_denied')
+          } else {
+            router.push('/auth?error=callback_error')
+          }
+          return
+        }
         
         // Если есть токены в URL, устанавливаем сессию
         if (access_token && refresh_token) {
