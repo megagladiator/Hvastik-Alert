@@ -76,15 +76,15 @@ export default function AuthCallbackPage() {
         }
         
         // Проверяем текущую сессию
-        const { data, error } = await supabase.auth.getSession()
+        const { data, error: sessionError } = await supabase.auth.getSession()
         
         console.log('🔍 Session data:', { 
           hasSession: !!data.session, 
-          error: error?.message 
+          error: sessionError?.message 
         })
         
-        if (error) {
-          console.error('❌ Auth callback error:', error)
+        if (sessionError) {
+          console.error('❌ Auth callback error:', sessionError)
           router.push('/auth?error=callback_error')
           return
         }
