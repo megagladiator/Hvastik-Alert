@@ -17,26 +17,22 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Получаем токен из URL (может быть в query или hash)
-    const searchParams = new URLSearchParams(window.location.search)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    
-    const token = searchParams.get('token') || hashParams.get('access_token')
-    const type = searchParams.get('type') || 'recovery'
+    // Получаем access_token из hash (как в статье)
+    const hash = window.location.hash
+    const params = new URLSearchParams(hash.substring(1))
+    const accessToken = params.get('access_token')
     
     console.log('🔍 Password reset page loaded', { 
-      token: token ? 'present' : 'missing',
-      type,
-      search: window.location.search,
+      accessToken: accessToken ? 'present' : 'missing',
       hash: window.location.hash
     })
     
-    if (!token) {
+    if (!accessToken) {
       setError('Токен сброса пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
       return
     }
     
-    setAccessToken(token)
+    setAccessToken(accessToken)
     setRefreshToken('')
   }, [])
 
