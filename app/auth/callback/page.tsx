@@ -10,33 +10,49 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Получаем сессию из URL
+        console.log('🔍 Auth callback started')
+        console.log('🔍 Current URL:', window.location.href)
+        
+        // Получаем параметры из URL
+        const urlParams = new URLSearchParams(window.location.search)
+        const type = urlParams.get('type')
+        const token = urlParams.get('token')
+        
+        console.log('🔍 URL params:', { type, token: token ? 'present' : 'missing' })
+        
+        // Обрабатываем callback через Supabase
         const { data, error } = await supabase.auth.getSession()
         
+        console.log('🔍 Session data:', { 
+          hasSession: !!data.session, 
+          error: error?.message 
+        })
+        
         if (error) {
-          console.error('Auth callback error:', error)
+          console.error('❌ Auth callback error:', error)
           router.push('/auth?error=callback_error')
           return
         }
 
         if (data.session) {
-          // Проверяем, это сброс пароля или обычная аутентификация
-          const urlParams = new URLSearchParams(window.location.search)
-          const type = urlParams.get('type')
+          console.log('✅ Session found, redirecting...')
           
           if (type === 'recovery') {
             // Это сброс пароля - перенаправляем на страницу сброса
+            console.log('🔄 Redirecting to password reset page')
             router.push('/auth/reset-password')
           } else {
             // Обычная аутентификация - перенаправляем на главную
+            console.log('🏠 Redirecting to home page')
             router.push('/')
           }
         } else {
+          console.log('❌ No session found, redirecting to auth')
           // Нет сессии - перенаправляем на страницу входа
           router.push('/auth')
         }
       } catch (error) {
-        console.error('Unexpected error in auth callback:', error)
+        console.error('❌ Unexpected error in auth callback:', error)
         router.push('/auth?error=unexpected_error')
       }
     }

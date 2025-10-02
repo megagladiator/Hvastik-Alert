@@ -19,6 +19,8 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const checkSession = async () => {
       try {
+        console.log('🔍 Checking session for password reset...')
+        
         // Проверяем текущую сессию Supabase
         const { data: { session }, error } = await supabase.auth.getSession()
         
@@ -39,16 +41,19 @@ export default function ResetPasswordPage() {
           const refresh_token = searchParams.get('refresh_token')
           const type = searchParams.get('type')
           
+          console.log('🔍 URL params:', { access_token: !!access_token, refresh_token: !!refresh_token, type })
+          
           if (access_token && refresh_token && type === 'recovery') {
+            console.log('✅ Found tokens in URL params')
             setAccessToken(access_token)
             setRefreshToken(refresh_token)
           } else {
             console.log('❌ No valid session or URL params for password reset')
-            setError("Неверная ссылка для сброса пароля")
+            setError("Неверная ссылка для сброса пароля. Пожалуйста, запросите новую ссылку.")
           }
         }
       } catch (error) {
-        console.error('Error checking session:', error)
+        console.error('❌ Error checking session:', error)
         setError("Ошибка при проверке сессии")
       }
     }
