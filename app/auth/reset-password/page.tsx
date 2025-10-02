@@ -11,6 +11,7 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(true)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -21,43 +22,140 @@ export default function ResetPasswordPage() {
     console.log("Window location search:", window.location.search)
     console.log("Window location hash:", window.location.hash)
 
-    const code = searchParams.get('code') || new URLSearchParams(window.location.search).get('code')
-    console.log('Extracted code param:', code)
+    // Проверяем все возможные параметры
+    const urlParams = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1))
+    
+    console.log("All URL search params:", Object.fromEntries(urlParams.entries()))
+    console.log("All hash params:", Object.fromEntries(hashParams.entries()))
 
-    if (!code) {
-      console.error('Error: Code param is missing')
-      setError('Код восстановления пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
+    const code = searchParams.get('code') || urlParams.get('code')
+    const accessToken = hashParams.get('access_token')
+    const refreshToken = hashParams.get('refresh_token')
+    const token = urlParams.get('token')
+    const type = urlParams.get('type')
+    
+    console.log('Extracted params:', { code, accessToken: !!accessToken, refreshToken: !!refreshToken, token, type })
+
+    // Получаем code_verifier из localStorage
+    const codeVerifier = localStorage.getItem('pkce_code_verifier')
+    console.log('🔑 Code verifier from localStorage:', codeVerifier ? 'found' : 'not found')
+
+    // Если есть токены в hash, используем их
+    if (accessToken && refreshToken) {
+      console.log("Found tokens in hash, setting session...")
+      handleTokensFromHash(accessToken, refreshToken)
+      return
+    }
+
+    // Если есть code и code_verifier, пробуем exchangeCodeForSession
+    if (code && codeVerifier) {
+      console.log("Found code and code_verifier, trying exchangeCodeForSession...")
+      handleCodeExchange(code, codeVerifier)
+      return
+    }
+
+    // Если есть code но нет code_verifier
+    if (code && !codeVerifier) {
+      console.error('Code found but no code_verifier in localStorage')
+      setError('Код восстановления найден, но отсутствует code_verifier. Пожалуйста, запросите новую ссылку.')
+      setIsProcessing(false)
       console.groupEnd()
       return
     }
-    
-    async function handleCode() {
-      try {
-        console.log("Calling supabase.auth.verifyOtp with code...")
-        const { data, error } = await supabase.auth.verifyOtp({
-          token_hash: code,
-          type: 'recovery'
-        })
-        if (error) {
-          console.error("Error from verifyOtp:", error)
-          setError('Ошибка: ' + error.message)
-        } else {
-          console.log("verifyOtp successful", data)
-          // После успешной верификации токена, пользователь может сбросить пароль
-        }
-      } catch (err) {
-        console.error("Exception in handleCode:", err)
-        setError('Произошла ошибка при обработке ссылки сброса пароля')
-      } finally {
-        setLoading(false)
-        console.groupEnd()
-      }
+
+    // Если есть token и type, пробуем verifyOtp
+    if (token && type) {
+      console.log("Found token and type, trying verifyOtp...")
+      handleTokenVerification(token, type)
+      return
     }
 
-    handleCode()
+    console.error('Error: No valid auth params found')
+    setError('Код восстановления пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
+    setIsProcessing(false)
+    console.groupEnd()
   }, [searchParams])
 
-  async function handleSubmit(e) {
+  // Обработка токенов из hash (implicit flow)
+  async function handleTokensFromHash(accessToken: string, refreshToken: string) {
+    try {
+      console.log("Setting session from hash tokens...")
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      })
+      
+      if (error) {
+        console.error("Error setting session from hash:", error)
+        setError('Ошибка: ' + error.message)
+      } else {
+        console.log("Session set successfully from hash")
+      }
+    } catch (err) {
+      console.error("Exception setting session from hash:", err)
+      setError('Произошла ошибка при обработке ссылки сброса пароля')
+    } finally {
+      setIsProcessing(false)
+      console.groupEnd()
+    }
+  }
+
+  // Обработка code exchange (PKCE flow)
+  async function handleCodeExchange(code: string, codeVerifier: string) {
+    try {
+      console.log("Trying exchangeCodeForSession with code_verifier...")
+      const { data, error } = await supabase.auth.exchangeCodeForSession({
+        code,
+        code_verifier: codeVerifier
+      })
+      
+      if (error) {
+        console.error("Error from exchangeCodeForSession:", error)
+        setError('Ошибка: ' + error.message)
+        // Удаляем code_verifier при ошибке
+        localStorage.removeItem('pkce_code_verifier')
+      } else {
+        console.log("exchangeCodeForSession successful", data)
+        // Удаляем code_verifier после успешного использования
+        localStorage.removeItem('pkce_code_verifier')
+      }
+    } catch (err) {
+      console.error("Exception in handleCodeExchange:", err)
+      setError('Произошла ошибка при обработке ссылки сброса пароля')
+      // Удаляем code_verifier при ошибке
+      localStorage.removeItem('pkce_code_verifier')
+    } finally {
+      setIsProcessing(false)
+      console.groupEnd()
+    }
+  }
+
+  // Обработка token verification (magic link flow)
+  async function handleTokenVerification(token: string, type: string) {
+    try {
+      console.log("Trying verifyOtp with token and type...")
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: token,
+        type: type as any
+      })
+      
+      if (error) {
+        console.error("Error from verifyOtp:", error)
+        setError('Ошибка: ' + error.message)
+      } else {
+        console.log("verifyOtp successful", data)
+      }
+    } catch (err) {
+      console.error("Exception in handleTokenVerification:", err)
+      setError('Произошла ошибка при обработке ссылки сброса пароля')
+    } finally {
+      setIsProcessing(false)
+      console.groupEnd()
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
 
@@ -90,6 +188,21 @@ export default function ResetPasswordPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (isProcessing) {
+    return (
+      <div className="max-w-md w-full mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
+        <div className="text-center">
+          <div className="text-blue-600 text-4xl mb-4">⏳</div>
+          <h2 className="text-xl font-bold mb-4 text-blue-600">Обработка ссылки...</h2>
+          <p className="text-gray-600 mb-6">
+            Проверяем ссылку для сброса пароля
+          </p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        </div>
+      </div>
+    )
   }
 
   if (success) {
@@ -176,10 +289,15 @@ export default function ResetPasswordPage() {
         >
           {loading ? "Обновление..." : "Установить новый пароль"}
         </button>
-        <div className="text-center">
+        <div className="text-center space-y-2">
           <Link href="/auth" className="text-blue-600 underline">
             Вернуться к входу
           </Link>
+          <div>
+            <Link href="/debug-password-reset" className="text-gray-500 text-sm underline">
+              🔍 Debug Info
+            </Link>
+          </div>
         </div>
       </form>
     </div>

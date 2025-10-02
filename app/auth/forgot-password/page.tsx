@@ -26,24 +26,46 @@ export default function ForgotPasswordPage() {
     }
   }, [searchParams])
 
+  // Генерация code_verifier для PKCE flow
+  function generateCodeVerifier(length = 128) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'
+    let verifier = ''
+    for (let i = 0; i < length; i++) {
+      verifier += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return verifier
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
     setLoading(true)
     
     try {
+      // Генерируем и сохраняем code_verifier для PKCE flow
+      const codeVerifier = generateCodeVerifier()
+      localStorage.setItem('pkce_code_verifier', codeVerifier)
+      
+      console.log('🔑 Generated code_verifier:', codeVerifier.substring(0, 20) + '...')
+      console.log('💾 Saved to localStorage')
+
       const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ 
+          email,
+          codeVerifier // Передаем code_verifier в API
+        }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
         setError(data.error || 'Произошла ошибка')
+        // Удаляем code_verifier при ошибке
+        localStorage.removeItem('pkce_code_verifier')
         return
       }
 
@@ -51,6 +73,8 @@ export default function ForgotPasswordPage() {
       
     } catch (error: any) {
       setError('Произошла ошибка при отправке запроса')
+      // Удаляем code_verifier при ошибке
+      localStorage.removeItem('pkce_code_verifier')
     }
     
     setLoading(false)

@@ -6,9 +6,10 @@ import { getAuthUrl } from '@/lib/url-utils'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email } = body
+    const { email, codeVerifier } = body
 
     console.log('🔍 Forgot password request for:', email)
+    console.log('🔑 Code verifier provided:', !!codeVerifier)
     console.log('🔍 Supabase client:', !!supabase)
     console.log('🔍 Supabase server client:', !!supabaseServer)
     console.log('🔍 Environment check:')
@@ -54,10 +55,18 @@ export async function POST(request: NextRequest) {
     // Отправляем письмо для сброса пароля через стандартный Supabase API
     console.log('📧 Sending password reset email...')
     console.log('📧 Using redirect URL:', resetUrl)
+    console.log('🔑 Using code verifier:', codeVerifier ? 'provided' : 'not provided')
     
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const resetOptions: any = {
       redirectTo: resetUrl,
-    })
+    }
+    
+    // Добавляем codeVerifier если он предоставлен
+    if (codeVerifier) {
+      resetOptions.codeVerifier = codeVerifier
+    }
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, resetOptions)
     
     console.log('📧 Password reset request result:', { 
       email, 
