@@ -24,18 +24,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    if (!supabase) {
-      console.log('❌ Supabase not initialized')
-      return NextResponse.json({ error: 'Supabase not initialized' }, { status: 500 })
-    }
-
-    console.log('✅ Supabase client available')
-    
-    // Проверяем переменные окружения
-    console.log('🔍 Environment check:', {
-      SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'present' : 'missing',
-      SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'present' : 'missing'
-    })
+    console.log('✅ Basic validation passed')
 
     // ПРОСТОЙ ПОДХОД: Пытаемся обновить пароль
     console.log('🔄 Updating password...')
