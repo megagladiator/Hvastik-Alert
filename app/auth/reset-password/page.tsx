@@ -17,23 +17,42 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Получаем access_token из hash (как в статье)
-    const hash = window.location.hash
-    const params = new URLSearchParams(hash.substring(1))
-    const accessToken = params.get('access_token')
+    // Получаем code из URL (PKCE flow)
+    const urlParams = new URLSearchParams(window.location.search)
+    const code = urlParams.get('code')
     
     console.log('🔍 Password reset page loaded', { 
-      accessToken: accessToken ? 'present' : 'missing',
-      hash: window.location.hash
+      code: code ? 'present' : 'missing',
+      search: window.location.search
     })
     
-    if (!accessToken) {
-      setError('Токен сброса пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
+    if (!code) {
+      setError('Код восстановления пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
       return
     }
     
-    setAccessToken(accessToken)
-    setRefreshToken('')
+    // Обмениваем код на сессию
+    async function handleCode() {
+      try {
+        console.log('🔄 Exchanging code for session...')
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        
+        if (error) {
+          console.error('❌ Error exchanging code:', error)
+          setError(error.message)
+          return
+        }
+        
+        console.log('✅ Code exchanged successfully')
+        setAccessToken('session-ready')
+        setRefreshToken('session-ready')
+      } catch (err: any) {
+        console.error('❌ Exception exchanging code:', err)
+        setError('Произошла ошибка при обработке ссылки сброса пароля')
+      }
+    }
+    
+    handleCode()
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -55,13 +74,12 @@ export default function ResetPasswordPage() {
     setLoading(true)
     
     try {
-      // Используем правильный подход из документации Supabase
-      console.log('🔍 Updating password with access token...')
+      // Обновляем пароль (сессия уже установлена через exchangeCodeForSession)
+      console.log('🔍 Updating password...')
       
-      const { data, error } = await supabase.auth.updateUser(
-        { password: password },
-        { accessToken: accessToken }
-      )
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      })
 
       if (error) {
         console.error('❌ Error updating password:', error)
