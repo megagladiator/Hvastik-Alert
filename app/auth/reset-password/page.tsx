@@ -17,12 +17,20 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // ПРОСТОЙ ПОДХОД: Показываем форму сброса пароля всегда
-    // Supabase сам проверит сессию при обновлении пароля
-    console.log('🔍 Password reset page loaded')
+    // Получаем токен из URL
+    const token = searchParams.get('token')
+    const type = searchParams.get('type')
+    
+    console.log('🔍 Password reset page loaded', { token: token ? 'present' : 'missing', type })
+    
+    if (!token) {
+      setError('Токен сброса пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
+      return
+    }
+    
     setAccessToken('ready')
     setRefreshToken('ready')
-  }, [])
+  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -43,7 +51,11 @@ export default function ResetPasswordPage() {
     setLoading(true)
     
     try {
-      const response = await fetch('/api/auth/reset-password', {
+      // Получаем токен из URL
+      const token = searchParams.get('token')
+      const type = searchParams.get('type') || 'recovery'
+      
+      const response = await fetch(`/api/auth/reset-password?token=${token}&type=${type}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

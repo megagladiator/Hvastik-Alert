@@ -26,22 +26,45 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Basic validation passed')
 
-    // ПРОСТОЙ ПОДХОД: Пытаемся обновить пароль
-    console.log('🔄 Updating password...')
+    // ПРАВИЛЬНЫЙ ПОДХОД: Используем verifyOtp для сброса пароля
+    console.log('🔄 Verifying OTP and updating password...')
     
     try {
+      // Получаем токен из URL (должен быть передан с клиента)
+      const url = new URL(request.url)
+      const token = url.searchParams.get('token')
+      const type = url.searchParams.get('type') || 'recovery'
+      
+      console.log('🔍 Token from URL:', { token: token ? 'present' : 'missing', type })
+      
+      if (!token) {
+        return NextResponse.json({ 
+          error: 'Токен сброса пароля отсутствует. Пожалуйста, перейдите по ссылке из email.' 
+        }, { status: 400 })
+      }
+      
+      // Сначала верифицируем токен
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash: token,
+        type: type as any
+      })
+      
+      if (verifyError) {
+        console.error('❌ Error verifying OTP:', verifyError)
+        return NextResponse.json({ 
+          error: 'Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.' 
+        }, { status: 400 })
+      }
+      
+      console.log('✅ OTP verified successfully')
+      
+      // Теперь обновляем пароль
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword
       })
 
       if (updateError) {
         console.error('❌ Error updating password:', updateError)
-        
-        if (updateError.message.includes('session_not_found') || updateError.message.includes('invalid_grant')) {
-          return NextResponse.json({ 
-            error: 'Ссылка для сброса пароля недействительна или истекла. Пожалуйста, запросите новую ссылку.' 
-          }, { status: 400 })
-        }
         
         if (updateError.message.includes('Password should be at least')) {
           return NextResponse.json({ 
