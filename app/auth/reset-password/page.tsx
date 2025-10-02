@@ -13,10 +13,17 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false)
   const [accessToken, setAccessToken] = useState("")
   const [refreshToken, setRefreshToken] = useState("")
+  const [isCodeHandled, setIsCodeHandled] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
   useEffect(() => {
+    // Защита от повторной обработки токена
+    if (isCodeHandled) {
+      console.log('🔍 Code already handled, skipping...')
+      return
+    }
+
     // Получаем code из URL используя Next.js router
     const code = searchParams.get('code') || new URLSearchParams(window.location.search).get('code')
     
@@ -28,10 +35,11 @@ export default function ResetPasswordPage() {
     if (!code) {
       console.log('❌ No code found in URL')
       setError('Код восстановления пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
+      setIsCodeHandled(true)
       return
     }
     
-    // Верифицируем PKCE токен
+    // Верифицируем PKCE токен только один раз
     async function handleCode() {
       try {
         console.log('🔄 Verifying PKCE token...')
@@ -43,20 +51,23 @@ export default function ResetPasswordPage() {
         if (error) {
           console.error('❌ Error verifying token:', error)
           setError('Ошибка: ' + error.message)
+          setIsCodeHandled(true)
           return
         }
         
         console.log('✅ Token verified successfully')
         setAccessToken('session-ready')
         setRefreshToken('session-ready')
+        setIsCodeHandled(true)
       } catch (err: any) {
         console.error('❌ Exception verifying token:', err)
         setError('Произошла ошибка при обработке ссылки сброса пароля')
+        setIsCodeHandled(true)
       }
     }
     
     handleCode()
-  }, [searchParams])
+  }, [searchParams, isCodeHandled])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
