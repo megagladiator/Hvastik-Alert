@@ -28,7 +28,7 @@ export async function signOut() {
   return supabase.auth.signOut()
 }
 
-// Запрос ссылки на сброс пароля (используем signInWithOtp для обхода PKCE)
+// Запрос ссылки на сброс пароля (стандартный подход Supabase)
 export async function requestPasswordReset(email: string) {
   console.log('🔍 Forgot password request for:', email)
   
@@ -42,15 +42,11 @@ export async function requestPasswordReset(email: string) {
   console.log('🌐 Base URL for password reset:', baseUrl)
   console.log('🌐 NODE_ENV:', process.env.NODE_ENV)
   
-  console.log('📧 Sending password reset email using signInWithOtp...')
+  console.log('📧 Sending password reset email using resetPasswordForEmail...')
   
-  // Используем signInWithOtp вместо resetPasswordForEmail для обхода PKCE проблем
-  const result = await supabase.auth.signInWithOtp({
-    email: email,
-    options: {
-      emailRedirectTo: `${baseUrl}/auth/callback`,
-      shouldCreateUser: false // Не создаем пользователя, только сброс пароля
-    }
+  // Используем стандартный resetPasswordForEmail
+  const result = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${baseUrl}/auth/callback`
   })
   
   console.log('📧 Password reset request result:', { email, error: result.error })
