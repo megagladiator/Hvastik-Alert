@@ -30,11 +30,8 @@ export async function GET(request: Request) {
       console.log('✅ Code exchanged for session successfully')
       console.log('User:', data.user?.email)
       
-      // ВРЕМЕННО ОТКЛЮЧЕНО: Перенаправляем на страницу сброса пароля
-      // return NextResponse.redirect(new URL('/auth/reset-password', requestUrl.origin))
-      
-      // ВРЕМЕННО: Возвращаем пустой ответ для диагностики
-      return new NextResponse(null, { status: 200 })
+      // ИСПРАВЛЕНО: Перенаправляем на страницу сброса пароля с правильным URL
+      return NextResponse.redirect(new URL('/auth/reset-password', requestUrl.origin))
       
     } catch (err) {
       console.error('❌ Exception in callback route:', err)
@@ -62,11 +59,8 @@ export async function GET(request: Request) {
       console.log('User:', data.user?.email)
       console.log('Token type:', type)
       
-      // ВРЕМЕННО ОТКЛЮЧЕНО: Перенаправляем на страницу сброса пароля
-      // return NextResponse.redirect(new URL('/auth/reset-password', requestUrl.origin))
-      
-      // ВРЕМЕННО: Возвращаем пустой ответ для диагностики
-      return new NextResponse(null, { status: 200 })
+      // ИСПРАВЛЕНО: Перенаправляем на страницу сброса пароля с правильным URL
+      return NextResponse.redirect(new URL('/auth/reset-password', requestUrl.origin))
       
     } catch (err) {
       console.error('❌ Exception verifying token:', err)
