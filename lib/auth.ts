@@ -74,6 +74,14 @@ export async function exchangeCodeForSession(code: string) {
 export async function updatePassword(newPassword: string) {
   console.log('🔑 Updating password...')
   const supabase = createClient()
+  
+  // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Принудительно выходим из сессии перед обновлением пароля
+  console.log('🔒 Forcing sign out before password update...')
+  await supabase.auth.signOut()
+  
+  // Небольшая задержка для завершения выхода
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
   const { error } = await supabase.auth.updateUser({ password: newPassword })
   
   if (error) {

@@ -189,7 +189,22 @@ export default function ResetPasswordPage() {
       setSuccess(true)
     } catch (err: any) {
       console.error("Exception in updating password:", err)
-      setError('Произошла ошибка при сбросе пароля: ' + (err.message || 'Неизвестная ошибка'))
+      
+      // КРАСИВАЯ ОБРАБОТКА ОШИБОК SUPABASE
+      if (err.message && err.message.includes('New password should be different from the old password')) {
+        setError('Пароль не изменен. Новый пароль должен отличаться от старого.')
+      } else if (err.message && err.message.includes('Password should be at least')) {
+        setError('Пароль слишком короткий. Минимальная длина: 6 символов.')
+      } else if (err.message && err.message.includes('Invalid password')) {
+        setError('Некорректный пароль. Используйте только допустимые символы.')
+      } else if (err.message && err.message.includes('User not found')) {
+        setError('Пользователь не найден. Пожалуйста, запросите новую ссылку.')
+      } else if (err.message && err.message.includes('Token has expired')) {
+        setError('Ссылка истекла. Пожалуйста, запросите новую ссылку.')
+      } else {
+        // Для всех остальных ошибок
+        setError('Произошла ошибка при сбросе пароля. Попробуйте еще раз.')
+      }
     } finally {
       setLoading(false)
     }
