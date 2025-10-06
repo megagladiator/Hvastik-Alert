@@ -22,10 +22,26 @@ echo "🚀 Updating version before commit..."
 # Запускаем скрипт обновления версии
 node scripts/update-version.js
 
+# Получаем новую версию
+NEW_VERSION=$(node -p "require('./version.json').version")
+
 # Добавляем обновленные файлы в коммит
 git add version.json package.json README.md
 
-echo "✅ Version updated and files staged"
+# Обновляем сообщение коммита, добавляя версию
+if [ -f .git/COMMIT_EDITMSG ]; then
+    # Читаем текущее сообщение коммита
+    COMMIT_MSG=$(cat .git/COMMIT_EDITMSG)
+    
+    # Проверяем, есть ли уже версия в сообщении
+    if ! echo "$COMMIT_MSG" | grep -q "v[0-9]\\+\\.[0-9]\\+\\.[0-9]\\+"; then
+        # Добавляем версию в начало сообщения
+        echo "v$NEW_VERSION - $COMMIT_MSG" > .git/COMMIT_EDITMSG
+        echo "📝 Added version v$NEW_VERSION to commit message"
+    fi
+fi
+
+echo "✅ Version v$NEW_VERSION updated and files staged"
 `;
 
   try {
