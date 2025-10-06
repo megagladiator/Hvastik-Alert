@@ -25,7 +25,7 @@ export async function signOut() {
   return supabase.auth.signOut()
 }
 
-// Запрос ссылки на сброс пароля (без PKCE для совместимости)
+// Запрос ссылки на сброс пароля (используем OTP вместо PKCE)
 export async function requestPasswordReset(email: string) {
   console.log('🔍 Forgot password request for:', email)
   
@@ -34,34 +34,25 @@ export async function requestPasswordReset(email: string) {
     ? 'https://hvostikalert.ru' 
     : 'http://localhost:3000'
   
-  console.log('📧 Sending password reset email...')
+  console.log('📧 Sending password reset email with OTP flow...')
+  
+  // Используем OTP flow вместо PKCE для лучшей совместимости
   const result = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${baseUrl}/auth/callback`
+    redirectTo: `${baseUrl}/auth/callback`,
+    // Отключаем PKCE flow
+    captchaToken: undefined
   })
   
   console.log('📧 Password reset request result:', { email, error: result.error })
   return result
 }
 
-// Обмен кода из URL сброса на сессию
+// Обмен кода из URL сброса на сессию (упрощенная версия без PKCE)
 export async function exchangeCodeForSession(code: string) {
-  console.log('Trying exchangeCodeForSession...')
+  console.log('Trying exchangeCodeForSession with OTP flow...')
   
-  // Пробуем сначала без code_verifier (для совместимости)
-  let result = await supabase.auth.exchangeCodeForSession({ code })
-  
-  if (result.error) {
-    console.log('❌ Error without code_verifier:', result.error.message)
-    
-    // Если не получилось, пробуем с code_verifier из localStorage
-    const codeVerifier = typeof window !== 'undefined' ? localStorage.getItem('pkce_code_verifier') : null
-    console.log('🔑 Code verifier from localStorage:', codeVerifier ? 'found' : 'not found')
-    
-    if (codeVerifier) {
-      console.log('Trying with code_verifier...')
-      result = await supabase.auth.exchangeCodeForSession({ code, code_verifier: codeVerifier })
-    }
-  }
+  // Используем простой OTP flow без PKCE
+  const result = await supabase.auth.exchangeCodeForSession({ code })
   
   if (result.error) {
     console.error('❌ Error from exchangeCodeForSession:', result.error)

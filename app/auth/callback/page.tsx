@@ -54,10 +54,12 @@ export default function AuthCallbackPage() {
       return
     }
     
-    // Проверяем наличие кода в query параметрах
+    // Проверяем наличие кода в query параметрах (OTP flow)
     const code = searchParams.get('code')
     if (code) {
-      console.log('Found code in query params, redirecting to reset password...')
+      console.log('Found OTP code in query params, redirecting to reset password...')
+      console.log('Code length:', code.length)
+      console.log('Code preview:', code.substring(0, 20) + '...')
       // Перенаправляем на страницу сброса пароля с кодом
       router.push('/auth/reset-password?code=' + encodeURIComponent(code))
       return
