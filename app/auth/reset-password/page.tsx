@@ -13,6 +13,7 @@ import {
   getCodeVerifier,
   clearCodeVerifier
 } from "@/lib/auth"
+import { supabase } from "@/lib/supabase"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -188,6 +189,11 @@ export default function ResetPasswordPage() {
       console.log("Calling updatePassword with new password...")
       await updatePassword(password)
       console.log("Password successfully updated")
+      
+      // ВАЖНО: Принудительно выходим из сессии после сброса пароля
+      console.log("🔒 Forcing sign out after password reset for security")
+      await supabase.auth.signOut()
+      
       setSuccess(true)
     } catch (err: any) {
       console.error("Exception in updating password:", err)

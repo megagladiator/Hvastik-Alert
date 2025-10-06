@@ -129,9 +129,11 @@ export async function verifyOtp(token: string, type: string) {
   return result
 }
 
-// Обработка токена восстановления пароля (не PKCE)
+// Обработка токена восстановления пароля (только проверка, БЕЗ авторизации)
 export async function verifyPasswordResetToken(token: string) {
-  console.log('🔍 Verifying password reset token...')
+  console.log('🔍 Verifying password reset token (NO SESSION SET)...')
+  
+  // Проверяем токен, но НЕ устанавливаем сессию
   const result = await supabase.auth.verifyOtp({
     token_hash: token,
     type: 'recovery'
@@ -140,7 +142,11 @@ export async function verifyPasswordResetToken(token: string) {
   if (result.error) {
     console.error('❌ Error from verifyPasswordResetToken:', result.error)
   } else {
-    console.log('✅ Password reset token verified successfully')
+    console.log('✅ Password reset token verified successfully (but NO session set)')
+    
+    // ВАЖНО: Принудительно выходим из сессии после проверки токена
+    await supabase.auth.signOut()
+    console.log('🔒 Forced sign out after token verification')
   }
   
   return result

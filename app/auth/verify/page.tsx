@@ -55,12 +55,17 @@ export default function VerifyPage() {
         setStatus('error')
       } else {
         console.log('Token verified successfully:', result.data)
+        
+        // ВАЖНО: НЕ устанавливаем сессию автоматически!
+        // Только проверяем токен, но не авторизуем пользователя
+        console.log('Token is valid, but NOT setting session automatically')
+        
         setStatus('success')
         
-        // Перенаправляем на страницу сброса пароля
-        if (redirectTo) {
-          console.log('Redirecting to:', redirectTo)
-          window.location.href = redirectTo
+        // Перенаправляем на страницу сброса пароля БЕЗ авторизации
+        if (redirectTo && redirectTo.includes('/auth/reset-password')) {
+          console.log('Redirecting to reset password page')
+          router.push('/auth/reset-password')
         } else {
           console.log('Redirecting to default reset password page')
           router.push('/auth/reset-password')
