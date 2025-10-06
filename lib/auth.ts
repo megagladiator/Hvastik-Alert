@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { createClient } from './supabase/client'
 
 // Генерация PKCE code_verifier
 export function generateCodeVerifier(len = 128): string {
@@ -12,22 +12,27 @@ export function generateCodeVerifier(len = 128): string {
 
 // Регистрация
 export async function signUp(email: string, password: string) {
+  const supabase = createClient()
   return supabase.auth.signUp({ email, password })
 }
 
 // Авторизация с email и паролем
 export async function signIn(email: string, password: string) {
+  const supabase = createClient()
   return supabase.auth.signInWithPassword({ email, password })
 }
 
 // Выход
 export async function signOut() {
+  const supabase = createClient()
   return supabase.auth.signOut()
 }
 
 // Запрос ссылки на сброс пароля (используем signInWithOtp для обхода PKCE)
 export async function requestPasswordReset(email: string) {
   console.log('🔍 Forgot password request for:', email)
+  
+  const supabase = createClient()
   
   // Определяем базовый URL
   const baseUrl = process.env.NODE_ENV === 'production' 
@@ -53,6 +58,8 @@ export async function requestPasswordReset(email: string) {
 export async function exchangeCodeForSession(code: string) {
   console.log('Trying exchangeCodeForSession with magic link token...')
   
+  const supabase = createClient()
+  
   // Для magic link токенов используем exchangeCodeForSession
   const result = await supabase.auth.exchangeCodeForSession({ code })
   
@@ -68,6 +75,7 @@ export async function exchangeCodeForSession(code: string) {
 // Обновление пароля
 export async function updatePassword(newPassword: string) {
   console.log('🔑 Updating password...')
+  const supabase = createClient()
   const { error } = await supabase.auth.updateUser({ password: newPassword })
   
   if (error) {
@@ -85,6 +93,7 @@ export async function updatePassword(newPassword: string) {
 
 // Получение текущего пользователя
 export async function getCurrentUser() {
+  const supabase = createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error) throw error
   return user
@@ -92,6 +101,7 @@ export async function getCurrentUser() {
 
 // Получение текущей сессии
 export async function getCurrentSession() {
+  const supabase = createClient()
   const { data: { session }, error } = await supabase.auth.getSession()
   if (error) throw error
   return session
@@ -99,6 +109,7 @@ export async function getCurrentSession() {
 
 // Установка сессии из токенов
 export async function setSession(accessToken: string, refreshToken: string) {
+  const supabase = createClient()
   return supabase.auth.setSession({
     access_token: accessToken,
     refresh_token: refreshToken
@@ -108,6 +119,7 @@ export async function setSession(accessToken: string, refreshToken: string) {
 // Верификация OTP токена
 export async function verifyOtp(token: string, type: string) {
   console.log('🔍 Verifying OTP token with type:', type)
+  const supabase = createClient()
   const result = await supabase.auth.verifyOtp({
     token_hash: token,
     type: type as any
@@ -125,6 +137,8 @@ export async function verifyOtp(token: string, type: string) {
 // Обработка токена восстановления пароля (только проверка, БЕЗ авторизации)
 export async function verifyPasswordResetToken(token: string) {
   console.log('🔍 Verifying password reset token (NO SESSION SET)...')
+  
+  const supabase = createClient()
   
   // Проверяем токен, но НЕ устанавливаем сессию
   const result = await supabase.auth.verifyOtp({
@@ -147,11 +161,13 @@ export async function verifyPasswordResetToken(token: string) {
 
 // Получение сессии из URL
 export async function getSessionFromUrl() {
+  const supabase = createClient()
   return supabase.auth.getSessionFromUrl()
 }
 
 // Удаление пользователя (только на стороне сервера с service role ключом)
 export async function deleteUser(userId: string) {
+  const supabase = createClient()
   const { data, error } = await supabase.auth.admin.deleteUser(userId)
   if (error) throw error
   return data
@@ -160,6 +176,7 @@ export async function deleteUser(userId: string) {
 // Проверка, авторизован ли пользователь
 export function isAuthenticated(): boolean {
   if (typeof window === 'undefined') return false
+  const supabase = createClient()
   const session = supabase.auth.getSession()
   return !!session
 }
