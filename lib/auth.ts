@@ -39,6 +39,9 @@ export async function requestPasswordReset(email: string) {
     ? 'https://hvostikalert.ru' 
     : 'http://localhost:3000'
   
+  console.log('🌐 Base URL for password reset:', baseUrl)
+  console.log('🌐 NODE_ENV:', process.env.NODE_ENV)
+  
   console.log('📧 Sending password reset email using signInWithOtp...')
   
   // Используем signInWithOtp вместо resetPasswordForEmail для обхода PKCE проблем
