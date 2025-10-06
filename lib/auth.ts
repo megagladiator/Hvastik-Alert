@@ -49,20 +49,17 @@ export async function requestPasswordReset(email: string) {
   return result
 }
 
-// Обмен кода из URL сброса на сессию (используем verifyOtp для OTP flow)
+// Обмен кода из URL сброса на сессию (правильная обработка magic link токенов)
 export async function exchangeCodeForSession(code: string) {
-  console.log('Trying exchangeCodeForSession with OTP flow...')
+  console.log('Trying exchangeCodeForSession with magic link token...')
   
-  // Для OTP flow используем verifyOtp вместо exchangeCodeForSession
-  const result = await supabase.auth.verifyOtp({
-    token: code,
-    type: 'email'
-  })
+  // Для magic link токенов используем exchangeCodeForSession
+  const result = await supabase.auth.exchangeCodeForSession({ code })
   
   if (result.error) {
-    console.error('❌ Error from verifyOtp:', result.error)
+    console.error('❌ Error from exchangeCodeForSession:', result.error)
   } else {
-    console.log('✅ verifyOtp successful')
+    console.log('✅ exchangeCodeForSession successful')
   }
   
   return result
