@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { requestPasswordReset, clearCodeVerifier, getCurrentUser, getCurrentSession } from "@/lib/auth"
+import { requestPasswordReset, clearCodeVerifier, getCurrentUser, getCurrentSession, signOut } from "@/lib/auth"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -94,6 +94,16 @@ export default function ForgotPasswordPage() {
   // Получаем информацию о пользователе и сессии
   useEffect(() => {
     const getUserInfo = async () => {
+      // КРИТИЧЕСКИ ВАЖНО: Принудительно выходим из системы при загрузке страницы
+      // Это предотвращает автоматическую авторизацию на странице сброса пароля
+      console.log('🔒 FORCING SIGN OUT on forgot password page load...')
+      try {
+        await signOut()
+        console.log('✅ Forced sign out on forgot password page completed')
+      } catch (signOutError) {
+        console.log('⚠️ Sign out error (may be normal if not authenticated):', signOutError)
+      }
+      
       try {
         const user = await getCurrentUser()
         const session = await getCurrentSession()
@@ -153,6 +163,16 @@ export default function ForgotPasswordPage() {
     
     try {
       console.log('🔑 Requesting password reset for:', email)
+      
+      // КРИТИЧЕСКИ ВАЖНО: Принудительно выходим из системы перед запросом сброса пароля
+      // Это предотвращает автоматическую авторизацию при переходе по ссылке
+      console.log('🔒 FORCING SIGN OUT before password reset request...')
+      try {
+        await signOut()
+        console.log('✅ Forced sign out completed before password reset')
+      } catch (signOutError) {
+        console.log('⚠️ Sign out error (may be normal if not authenticated):', signOutError)
+      }
       
       // Используем централизованную функцию из lib/auth.ts
       const { error } = await requestPasswordReset(email)
@@ -233,6 +253,17 @@ export default function ForgotPasswordPage() {
       <p className="text-gray-600 mb-6 text-center">
         Введите ваш email, и мы отправим ссылку для сброса пароля
       </p>
+      
+      {/* Предупреждение если пользователь уже авторизован */}
+      {userInfo.isAuthenticated && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="text-yellow-800 text-sm">
+            <div className="font-medium mb-1">⚠️ Внимание!</div>
+            <div>Вы уже авторизованы как <strong>{userInfo.user?.email}</strong></div>
+            <div className="mt-2">Для сброса пароля вы будете автоматически выйдены из системы.</div>
+          </div>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
