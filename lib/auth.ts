@@ -40,15 +40,11 @@ export async function requestPasswordReset(email: string) {
   console.log('🌐 FORCED Base URL for password reset:', baseUrl)
   console.log('🌐 NODE_ENV:', process.env.NODE_ENV)
   
-  console.log('📧 Sending password reset email using signInWithOtp with FORCED URL...')
+  console.log('📧 Sending password reset email using resetPasswordForEmail with FORCED URL...')
   
-  // Используем signInWithOtp с принудительным URL
-  const result = await supabase.auth.signInWithOtp({
-    email: email,
-    options: {
-      emailRedirectTo: `${baseUrl}/auth/callback`,
-      shouldCreateUser: false // Не создаем пользователя, только сброс пароля
-    }
+  // ИСПРАВЛЕНО: Используем правильную функцию resetPasswordForEmail
+  const result = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${baseUrl}/auth/callback`
   })
   
   console.log('📧 Password reset request result:', { email, error: result.error })

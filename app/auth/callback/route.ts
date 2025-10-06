@@ -30,8 +30,11 @@ export async function GET(request: Request) {
       console.log('✅ Code exchanged for session successfully')
       console.log('User:', data.user?.email)
       
-      // Перенаправляем на страницу сброса пароля
-      return NextResponse.redirect(new URL('/auth/reset-password', requestUrl.origin))
+      // ВРЕМЕННО ОТКЛЮЧЕНО: Перенаправляем на страницу сброса пароля
+      // return NextResponse.redirect(new URL('/auth/reset-password', requestUrl.origin))
+      
+      // ВРЕМЕННО: Возвращаем пустой ответ для диагностики
+      return new NextResponse(null, { status: 200 })
       
     } catch (err) {
       console.error('❌ Exception in callback route:', err)
@@ -39,30 +42,34 @@ export async function GET(request: Request) {
     }
   }
 
-  // Обработка Magic Link flow (token parameter)
+  // Обработка Recovery/Magic Link flow (token parameter)
   if (token && type) {
     try {
       const supabase = createClient()
       
-      console.log('🔄 Verifying magic link token...')
+      console.log('🔄 Verifying token with type:', type)
       const { data, error } = await supabase.auth.verifyOtp({
         token_hash: token,
         type: type as any
       })
       
       if (error) {
-        console.error('❌ Error verifying magic link token:', error)
+        console.error('❌ Error verifying token:', error)
         return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent(error.message), requestUrl.origin))
       }
       
-      console.log('✅ Magic link token verified successfully')
+      console.log('✅ Token verified successfully')
       console.log('User:', data.user?.email)
+      console.log('Token type:', type)
       
-      // Перенаправляем на страницу сброса пароля
-      return NextResponse.redirect(new URL('/auth/reset-password', requestUrl.origin))
+      // ВРЕМЕННО ОТКЛЮЧЕНО: Перенаправляем на страницу сброса пароля
+      // return NextResponse.redirect(new URL('/auth/reset-password', requestUrl.origin))
+      
+      // ВРЕМЕННО: Возвращаем пустой ответ для диагностики
+      return new NextResponse(null, { status: 200 })
       
     } catch (err) {
-      console.error('❌ Exception verifying magic link:', err)
+      console.error('❌ Exception verifying token:', err)
       return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent('Произошла ошибка при обработке ссылки'), requestUrl.origin))
     }
   }
