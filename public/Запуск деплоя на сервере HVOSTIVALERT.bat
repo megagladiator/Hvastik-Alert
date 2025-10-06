@@ -4,14 +4,15 @@ SET SSH_HOST=212.34.138.16
 REM Path to your private SSH key in Windows
 SET SSH_KEY_PATH=C:\Users\SuperBoss007\.ssh\id_rsa
 REM Path to deploy script for hvostikalert.ru on the server
-echo "SET DEPLOY_SCRIPT_PATH=/var/www/hvostikalert_usr/deploy.sh"
-SET DEPLOY_SCRIPT_PATH=/var/www/hvostikalert_usr/deploy.sh
+echo "SET DEPLOY_SCRIPT_PATH=/var/www/hvostikalert_usr/deploy_with_git_fix.sh"
+SET DEPLOY_SCRIPT_PATH=/var/www/hvostikalert_usr/deploy_with_git_fix.sh
 REM Show value of deploy script path to check
 echo Deploy script path is %DEPLOY_SCRIPT_PATH%
 
 ECHO.
 ECHO ======================================================
 ECHO Starting deployment for hvostikalert.ru on %SSH_HOST%...
+ECHO Using FIXED deploy script with Git conflict resolution
 ECHO ======================================================
 ECHO.
 
