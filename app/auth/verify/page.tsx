@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { verifyOtp, verifyPasswordResetToken } from "@/lib/auth"
+import { supabase } from "@/lib/supabase"
 
 export default function VerifyPage() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
@@ -16,6 +17,20 @@ export default function VerifyPage() {
     console.log('Full URL:', window.location.href)
     console.log('Search params:', window.location.search)
     console.log('Hash:', window.location.hash)
+    
+    // КРИТИЧЕСКИ ВАЖНО: Принудительно выходим из сессии в самом начале!
+    // Это предотвращает автоматическую авторизацию при переходе по ссылке
+    const forceSignOut = async () => {
+      console.log('🔒 FORCING SIGN OUT to prevent auto-authentication...')
+      try {
+        await supabase.auth.signOut()
+        console.log('✅ Forced sign out completed')
+      } catch (error) {
+        console.error('❌ Error during forced sign out:', error)
+      }
+    }
+    
+    forceSignOut()
     
     // Проверяем все возможные источники токена
     const token = searchParams.get('token') || new URLSearchParams(window.location.hash.substring(1)).get('token')
@@ -69,6 +84,16 @@ export default function VerifyPage() {
         setStatus('error')
       } else {
         console.log('Token verified successfully:', result.data)
+        
+        // КРИТИЧЕСКИ ВАЖНО: Принудительно выходим из сессии после верификации!
+        // Это гарантирует, что пользователь НЕ будет авторизован автоматически
+        console.log('🔒 FORCING SIGN OUT after token verification to prevent auto-authentication...')
+        try {
+          await supabase.auth.signOut()
+          console.log('✅ Forced sign out after token verification completed')
+        } catch (signOutError) {
+          console.error('❌ Error during forced sign out after verification:', signOutError)
+        }
         
         // ВАЖНО: НЕ устанавливаем сессию автоматически!
         // Только проверяем токен, но не авторизуем пользователя

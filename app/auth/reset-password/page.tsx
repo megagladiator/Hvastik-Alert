@@ -28,6 +28,20 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     console.group("ResetPasswordPage Load")
 
+    // КРИТИЧЕСКИ ВАЖНО: Принудительно выходим из сессии в самом начале!
+    // Это предотвращает автоматическую авторизацию на странице сброса пароля
+    const forceSignOut = async () => {
+      console.log('🔒 FORCING SIGN OUT on reset password page to prevent auto-authentication...')
+      try {
+        await supabase.auth.signOut()
+        console.log('✅ Forced sign out on reset password page completed')
+      } catch (error) {
+        console.error('❌ Error during forced sign out on reset password page:', error)
+      }
+    }
+    
+    forceSignOut()
+
     console.log("Full URL:", window.location.href)
     console.log("Window location search:", window.location.search)
     console.log("Window location hash:", window.location.hash)
