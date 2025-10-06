@@ -27,9 +27,14 @@ export async function signOut() {
 
 // Запрос ссылки на сброс пароля (с сохранением code_verifier)
 export async function requestPasswordReset(email: string) {
+  console.log('🔍 Forgot password request for:', email)
+  
   const codeVerifier = generateCodeVerifier()
+  console.log('🔑 Generated code_verifier:', codeVerifier.substring(0, 10) + '...')
+  
   if (typeof window !== 'undefined') {
     localStorage.setItem('pkce_code_verifier', codeVerifier)
+    console.log('💾 Saved to localStorage')
   }
   
   // Определяем базовый URL
@@ -37,25 +42,52 @@ export async function requestPasswordReset(email: string) {
     ? 'https://hvostikalert.ru' 
     : 'http://localhost:3000'
   
-  return supabase.auth.resetPasswordForEmail(email, {
+  console.log('📧 Sending password reset email...')
+  const result = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${baseUrl}/auth/reset-password`,
     codeVerifier
   })
+  
+  console.log('📧 Password reset request result:', { email, error: result.error })
+  return result
 }
 
 // Обмен кода из URL сброса на сессию
 export async function exchangeCodeForSession(code: string) {
   const codeVerifier = typeof window !== 'undefined' ? localStorage.getItem('pkce_code_verifier') : null
-  if (!codeVerifier) throw new Error('Code verifier missing, please request password reset again.')
-  return supabase.auth.exchangeCodeForSession({ code, code_verifier: codeVerifier })
+  console.log('🔑 Code verifier from localStorage:', codeVerifier ? 'found' : 'not found')
+  
+  if (!codeVerifier) {
+    throw new Error('Code verifier missing, please request password reset again.')
+  }
+  
+  console.log('Trying exchangeCodeForSession with code_verifier...')
+  const result = await supabase.auth.exchangeCodeForSession({ code, code_verifier: codeVerifier })
+  
+  if (result.error) {
+    console.error('❌ Error from exchangeCodeForSession:', result.error)
+  } else {
+    console.log('✅ exchangeCodeForSession successful')
+  }
+  
+  return result
 }
 
 // Обновление пароля
 export async function updatePassword(newPassword: string) {
+  console.log('🔑 Updating password...')
   const { error } = await supabase.auth.updateUser({ password: newPassword })
-  if (error) throw error
+  
+  if (error) {
+    console.error('❌ Error updating password:', error)
+    throw error
+  }
+  
+  console.log('✅ Password successfully updated')
+  
   if (typeof window !== 'undefined') {
     localStorage.removeItem('pkce_code_verifier')
+    console.log('🧹 Cleaned up code_verifier from localStorage')
   }
 }
 
@@ -83,10 +115,36 @@ export async function setSession(accessToken: string, refreshToken: string) {
 
 // Верификация OTP токена
 export async function verifyOtp(token: string, type: string) {
-  return supabase.auth.verifyOtp({
+  console.log('🔍 Verifying OTP token with type:', type)
+  const result = await supabase.auth.verifyOtp({
     token_hash: token,
     type: type as any
   })
+  
+  if (result.error) {
+    console.error('❌ Error from verifyOtp:', result.error)
+  } else {
+    console.log('✅ verifyOtp successful')
+  }
+  
+  return result
+}
+
+// Обработка токена восстановления пароля (не PKCE)
+export async function verifyPasswordResetToken(token: string) {
+  console.log('🔍 Verifying password reset token...')
+  const result = await supabase.auth.verifyOtp({
+    token_hash: token,
+    type: 'recovery'
+  })
+  
+  if (result.error) {
+    console.error('❌ Error from verifyPasswordResetToken:', result.error)
+  } else {
+    console.log('✅ Password reset token verified successfully')
+  }
+  
+  return result
 }
 
 // Получение сессии из URL

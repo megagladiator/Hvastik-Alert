@@ -8,6 +8,7 @@ import {
   updatePassword, 
   setSession, 
   verifyOtp, 
+  verifyPasswordResetToken,
   getSessionFromUrl,
   getCodeVerifier,
   clearCodeVerifier
@@ -79,6 +80,13 @@ export default function ResetPasswordPage() {
       return
     }
 
+    // Если есть только token (без type), пробуем verifyPasswordResetToken
+    if (token && !type) {
+      console.log("Found token without type, trying verifyPasswordResetToken...")
+      handlePasswordResetToken(token)
+      return
+    }
+
     console.error('Error: No valid auth params found')
     setError('Код восстановления пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
     setIsProcessing(false)
@@ -147,6 +155,27 @@ export default function ResetPasswordPage() {
       }
     } catch (err) {
       console.error("Exception in handleTokenVerification:", err)
+      setError('Произошла ошибка при обработке ссылки сброса пароля')
+    } finally {
+      setIsProcessing(false)
+      console.groupEnd()
+    }
+  }
+
+  // Обработка токена восстановления пароля (без type)
+  async function handlePasswordResetToken(token: string) {
+    try {
+      console.log("Trying verifyPasswordResetToken...")
+      const { data, error } = await verifyPasswordResetToken(token)
+      
+      if (error) {
+        console.error("Error from verifyPasswordResetToken:", error)
+        setError('Ошибка: ' + error.message)
+      } else {
+        console.log("verifyPasswordResetToken successful", data)
+      }
+    } catch (err) {
+      console.error("Exception in handlePasswordResetToken:", err)
       setError('Произошла ошибка при обработке ссылки сброса пароля')
     } finally {
       setIsProcessing(false)

@@ -1,103 +1,122 @@
 "use client"
 
-import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertCircle, Home, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 
 export default function AuthErrorPage() {
+  const [errorInfo, setErrorInfo] = useState<{
+    error: string | null
+    errorDescription: string | null
+    errorCode: string | null
+  }>({
+    error: null,
+    errorDescription: null,
+    errorCode: null
+  })
+  
   const searchParams = useSearchParams()
-  const error = searchParams.get('error')
 
-  const getErrorMessage = (error: string | null) => {
-    switch (error) {
-      case 'Configuration':
-        return 'Проблема с конфигурацией сервера'
-      case 'AccessDenied':
-        return 'Доступ запрещен'
-      case 'Verification':
-        return 'Ошибка верификации токена'
-      case 'Default':
-        return 'Произошла ошибка при аутентификации'
-      default:
-        return 'Неизвестная ошибка аутентификации'
+  useEffect(() => {
+    const error = searchParams.get('error')
+    const errorDescription = searchParams.get('error_description')
+    const errorCode = searchParams.get('error_code')
+    
+    setErrorInfo({ error, errorDescription, errorCode })
+    
+    console.log('Auth Error Page - Error details:', { error, errorDescription, errorCode })
+  }, [searchParams])
+
+  const getErrorMessage = () => {
+    if (errorInfo.error === 'access_denied') {
+      return {
+        title: 'Доступ запрещен',
+        message: 'Ссылка для сброса пароля была отклонена или истекла.',
+        action: 'Запросите новую ссылку для сброса пароля.'
+      }
+    }
+    
+    if (errorInfo.error === 'server_error') {
+      return {
+        title: 'Ошибка сервера',
+        message: 'Произошла временная ошибка на сервере.',
+        action: 'Попробуйте снова через несколько минут.'
+      }
+    }
+    
+    if (errorInfo.error === 'invalid_request') {
+      return {
+        title: 'Неверный запрос',
+        message: 'Ссылка для сброса пароля повреждена или недействительна.',
+        action: 'Запросите новую ссылку для сброса пароля.'
+      }
+    }
+    
+    if (errorInfo.errorCode === 'PKCE_GRANT_PARAMS_AUTH_CODE_TYPE_ERROR') {
+      return {
+        title: 'Ошибка обработки ссылки',
+        message: 'Произошла ошибка при обработке ссылки для сброса пароля. Это может быть связано с настройками браузера или устаревшей ссылкой.',
+        action: 'Попробуйте запросить новую ссылку или очистите кэш браузера.'
+      }
+    }
+    
+    return {
+      title: 'Ошибка аутентификации',
+      message: errorInfo.errorDescription || 'Произошла неизвестная ошибка при обработке ссылки.',
+      action: 'Попробуйте запросить новую ссылку для сброса пароля.'
     }
   }
 
-  const getErrorDescription = (error: string | null) => {
-    switch (error) {
-      case 'Configuration':
-        return 'Проверьте настройки Supabase в переменных окружения'
-      case 'AccessDenied':
-        return 'У вас нет прав для доступа к этому ресурсу'
-      case 'Verification':
-        return 'Ссылка для подтверждения недействительна или истекла'
-      case 'Default':
-        return 'Попробуйте войти снова или обратитесь к администратору'
-      default:
-        return 'Попробуйте обновить страницу или войти заново'
-    }
-  }
+  const errorMessage = getErrorMessage()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-red-600" />
-          </div>
-          <CardTitle className="text-2xl font-bold text-red-800">
-            Ошибка аутентификации
-          </CardTitle>
-        </CardHeader>
+    <div className="max-w-md w-full mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
+      <div className="text-center">
+        <div className="text-red-600 text-4xl mb-4">⚠️</div>
+        <h2 className="text-xl font-bold mb-4 text-red-600">{errorMessage.title}</h2>
+        <p className="text-gray-600 mb-6">{errorMessage.message}</p>
         
-        <CardContent className="space-y-6">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              {getErrorMessage(error)}
-            </h3>
-            <p className="text-gray-600 text-sm">
-              {getErrorDescription(error)}
-            </p>
+        {errorInfo.error && (
+          <div className="bg-gray-100 p-3 rounded mb-4 text-sm">
+            <div><strong>Код ошибки:</strong> {errorInfo.error}</div>
+            {errorInfo.errorCode && <div><strong>Детали:</strong> {errorInfo.errorCode}</div>}
+            {errorInfo.errorDescription && <div><strong>Описание:</strong> {errorInfo.errorDescription}</div>}
           </div>
-
-          {error && (
-            <div className="bg-gray-100 p-3 rounded-lg">
-              <p className="text-xs text-gray-500 font-mono">
-                Код ошибки: {error}
-              </p>
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <Button 
-              asChild 
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
-            >
-              <Link href="/auth">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Попробовать снова
-              </Link>
-            </Button>
-            
-            <Button 
-              asChild 
-              variant="outline" 
-              className="w-full"
-            >
-              <Link href="/">
-                <Home className="w-4 h-4 mr-2" />
-                На главную
-              </Link>
-            </Button>
-          </div>
-
-          <div className="text-center text-sm text-gray-500">
-            <p>Если проблема повторяется, обратитесь к администратору</p>
-          </div>
-        </CardContent>
-      </Card>
+        )}
+        
+        <div className="space-y-3">
+          <Link 
+            href="/auth/forgot-password" 
+            className="block w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-center"
+          >
+            Запросить новую ссылку
+          </Link>
+          
+          <Link 
+            href="/auth" 
+            className="block w-full bg-gray-500 hover:bg-gray-600 text-white py-2 rounded text-center"
+          >
+            Вернуться к входу
+          </Link>
+          
+          <Link 
+            href="/debug-password-reset" 
+            className="block w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded text-center"
+          >
+            🔍 Debug информация
+          </Link>
+        </div>
+        
+        <div className="mt-6 text-sm text-gray-500">
+          <p><strong>Рекомендации:</strong></p>
+          <ul className="text-left mt-2 space-y-1">
+            <li>• Убедитесь, что ссылка не была использована ранее</li>
+            <li>• Проверьте, что ссылка не истекла (действительна 1 час)</li>
+            <li>• Попробуйте в другом браузере</li>
+            <li>• Очистите кэш и cookies браузера</li>
+          </ul>
+        </div>
+      </div>
     </div>
   )
 }

@@ -3,15 +3,134 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { requestPasswordReset, clearCodeVerifier } from "@/lib/auth"
+import { requestPasswordReset, clearCodeVerifier, getCurrentUser, getCurrentSession } from "@/lib/auth"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<any>({})
+  const [userInfo, setUserInfo] = useState<any>({})
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // Собираем отладочную информацию
+  useEffect(() => {
+    const info: any = {
+      // URL информация
+      fullUrl: window.location.href,
+      origin: window.location.origin,
+      host: window.location.host,
+      protocol: window.location.protocol,
+      
+      // Параметры URL
+      searchParams: {},
+      hashParams: {},
+      
+      // Environment
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      platform: navigator.platform,
+      cookieEnabled: navigator.cookieEnabled,
+      onLine: navigator.onLine,
+      
+      // Local Storage
+      localStorage: {},
+      
+      // Session Storage
+      sessionStorage: {},
+      
+      // Cookies
+      cookies: document.cookie,
+      
+      // Timestamp
+      timestamp: new Date().toISOString(),
+      
+      // Supabase info
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || 'not set',
+      nodeEnv: process.env.NODE_ENV || 'not set'
+    }
+
+    // Парсим search parameters
+    const urlSearchParams = new URLSearchParams(window.location.search)
+    for (const [key, value] of urlSearchParams.entries()) {
+      info.searchParams[key] = value
+    }
+
+    // Парсим hash parameters
+    const hashSearchParams = new URLSearchParams(window.location.hash.substring(1))
+    for (const [key, value] of hashSearchParams.entries()) {
+      info.hashParams[key] = value
+    }
+
+    // Local storage
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key) {
+          info.localStorage[key] = localStorage.getItem(key)
+        }
+      }
+    } catch (e) {
+      info.localStorage = { error: 'Could not read localStorage' }
+    }
+
+    // Session storage
+    try {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key) {
+          info.sessionStorage[key] = sessionStorage.getItem(key)
+        }
+      }
+    } catch (e) {
+      info.sessionStorage = { error: 'Could not read sessionStorage' }
+    }
+
+    setDebugInfo(info)
+  }, [])
+
+  // Получаем информацию о пользователе и сессии
+  useEffect(() => {
+    const getUserInfo = async () => {
+      try {
+        const user = await getCurrentUser()
+        const session = await getCurrentSession()
+        
+        setUserInfo({
+          user: user ? {
+            id: user.id,
+            email: user.email,
+            email_confirmed_at: user.email_confirmed_at,
+            created_at: user.created_at,
+            last_sign_in_at: user.last_sign_in_at,
+            role: user.role,
+            aud: user.aud
+          } : null,
+          session: session ? {
+            access_token: session.access_token ? 'present' : 'missing',
+            refresh_token: session.refresh_token ? 'present' : 'missing',
+            expires_at: session.expires_at,
+            expires_in: session.expires_in,
+            token_type: session.token_type,
+            user_id: session.user?.id
+          } : null,
+          isAuthenticated: !!user
+        })
+      } catch (error) {
+        console.log('No authenticated user:', error)
+        setUserInfo({
+          user: null,
+          session: null,
+          isAuthenticated: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
+    }
+
+    getUserInfo()
+  }, [])
 
   // Проверяем параметры ошибки из URL
   useEffect(() => {
@@ -166,6 +285,146 @@ export default function ForgotPasswordPage() {
           </Link>
         </div>
       </form>
+
+      {/* Debug Information */}
+      <div className="mt-8 p-4 bg-gray-100 rounded-lg">
+        <h3 className="text-lg font-semibold mb-3 text-gray-800">🔍 Техническая информация</h3>
+        
+        <div className="space-y-4 text-sm">
+          {/* URL Info */}
+          <div className="bg-white p-3 rounded border">
+            <h4 className="font-medium text-gray-700 mb-2">📍 URL Information</h4>
+            <div className="space-y-1">
+              <div><strong>Full URL:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{debugInfo.fullUrl}</code></div>
+              <div><strong>Origin:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{debugInfo.origin}</code></div>
+              <div><strong>Host:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{debugInfo.host}</code></div>
+              <div><strong>Protocol:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{debugInfo.protocol}</code></div>
+            </div>
+          </div>
+
+          {/* Environment */}
+          <div className="bg-white p-3 rounded border">
+            <h4 className="font-medium text-gray-700 mb-2">🌐 Environment</h4>
+            <div className="space-y-1">
+              <div><strong>Node Env:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{debugInfo.nodeEnv}</code></div>
+              <div><strong>Supabase URL:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{debugInfo.supabaseUrl}</code></div>
+              <div><strong>Language:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{debugInfo.language}</code></div>
+              <div><strong>Platform:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{debugInfo.platform}</code></div>
+              <div><strong>Online:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{String(debugInfo.onLine)}</code></div>
+            </div>
+          </div>
+
+          {/* User & Session Info */}
+          <div className="bg-white p-3 rounded border">
+            <h4 className="font-medium text-gray-700 mb-2">👤 User & Session</h4>
+            <div className="space-y-1">
+              <div><strong>Authenticated:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{String(userInfo.isAuthenticated)}</code></div>
+              {userInfo.error && (
+                <div><strong>Error:</strong> <code className="bg-red-100 px-1 rounded text-xs text-red-600">{userInfo.error}</code></div>
+              )}
+              {userInfo.user && (
+                <div className="mt-2 space-y-1">
+                  <div><strong>User ID:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{userInfo.user.id}</code></div>
+                  <div><strong>Email:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{userInfo.user.email}</code></div>
+                  <div><strong>Email Confirmed:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{userInfo.user.email_confirmed_at ? 'Yes' : 'No'}</code></div>
+                  <div><strong>Created:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{userInfo.user.created_at}</code></div>
+                  <div><strong>Last Sign In:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{userInfo.user.last_sign_in_at || 'Never'}</code></div>
+                </div>
+              )}
+              {userInfo.session && (
+                <div className="mt-2 space-y-1">
+                  <div><strong>Access Token:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{userInfo.session.access_token}</code></div>
+                  <div><strong>Refresh Token:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{userInfo.session.refresh_token}</code></div>
+                  <div><strong>Expires At:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{userInfo.session.expires_at}</code></div>
+                  <div><strong>Expires In:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{userInfo.session.expires_in}</code></div>
+                  <div><strong>Token Type:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{userInfo.session.token_type}</code></div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Local Storage */}
+          <div className="bg-white p-3 rounded border">
+            <h4 className="font-medium text-gray-700 mb-2">💾 Local Storage</h4>
+            {Object.keys(debugInfo.localStorage || {}).length > 0 ? (
+              <div className="space-y-1">
+                {Object.entries(debugInfo.localStorage || {}).map(([key, value]) => (
+                  <div key={key}>
+                    <strong>{key}:</strong> <code className="bg-gray-100 px-1 rounded text-xs break-all">{String(value)}</code>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-gray-500">No localStorage items</div>
+            )}
+          </div>
+
+          {/* Session Storage */}
+          <div className="bg-white p-3 rounded border">
+            <h4 className="font-medium text-gray-700 mb-2">🗂️ Session Storage</h4>
+            {Object.keys(debugInfo.sessionStorage || {}).length > 0 ? (
+              <div className="space-y-1">
+                {Object.entries(debugInfo.sessionStorage || {}).map(([key, value]) => (
+                  <div key={key}>
+                    <strong>{key}:</strong> <code className="bg-gray-100 px-1 rounded text-xs break-all">{String(value)}</code>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-gray-500">No sessionStorage items</div>
+            )}
+          </div>
+
+          {/* Cookies */}
+          <div className="bg-white p-3 rounded border">
+            <h4 className="font-medium text-gray-700 mb-2">🍪 Cookies</h4>
+            <div className="text-xs">
+              <code className="bg-gray-100 px-1 rounded break-all">{debugInfo.cookies || 'No cookies'}</code>
+            </div>
+          </div>
+
+          {/* URL Parameters */}
+          <div className="bg-white p-3 rounded border">
+            <h4 className="font-medium text-gray-700 mb-2">🔍 URL Parameters</h4>
+            <div className="space-y-2">
+              <div>
+                <strong>Search Params:</strong>
+                {Object.keys(debugInfo.searchParams || {}).length > 0 ? (
+                  <div className="mt-1 space-y-1">
+                    {Object.entries(debugInfo.searchParams || {}).map(([key, value]) => (
+                      <div key={key} className="text-xs">
+                        <code className="bg-gray-100 px-1 rounded">{key}</code>: <code className="bg-gray-100 px-1 rounded">{String(value)}</code>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-gray-500 text-xs ml-2">None</span>
+                )}
+              </div>
+              <div>
+                <strong>Hash Params:</strong>
+                {Object.keys(debugInfo.hashParams || {}).length > 0 ? (
+                  <div className="mt-1 space-y-1">
+                    {Object.entries(debugInfo.hashParams || {}).map(([key, value]) => (
+                      <div key={key} className="text-xs">
+                        <code className="bg-gray-100 px-1 rounded">{key}</code>: <code className="bg-gray-100 px-1 rounded">{String(value)}</code>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-gray-500 text-xs ml-2">None</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Timestamp */}
+          <div className="bg-white p-3 rounded border">
+            <h4 className="font-medium text-gray-700 mb-2">⏰ Timestamp</h4>
+            <code className="bg-gray-100 px-1 rounded text-xs">{debugInfo.timestamp}</code>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
