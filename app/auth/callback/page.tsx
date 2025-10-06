@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { supabase } from "@/lib/supabase"
 
 export default function AuthCallbackPage() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
@@ -15,6 +16,20 @@ export default function AuthCallbackPage() {
     console.log('Full URL:', window.location.href)
     console.log('Search params:', window.location.search)
     console.log('Hash:', window.location.hash)
+    
+    // КРИТИЧЕСКИ ВАЖНО: Принудительно выходим из сессии в самом начале!
+    // Это предотвращает автоматическую авторизацию при переходе по ссылке
+    const forceSignOut = async () => {
+      console.log('🔒 FORCING SIGN OUT in callback to prevent auto-authentication...')
+      try {
+        await supabase.auth.signOut()
+        console.log('✅ Forced sign out in callback completed')
+      } catch (error) {
+        console.error('❌ Error during forced sign out in callback:', error)
+      }
+    }
+    
+    forceSignOut()
     
     // Проверяем наличие ошибок в URL
     const errorParam = searchParams.get('error')
@@ -64,6 +79,16 @@ export default function AuthCallbackPage() {
             Проверяем ссылку для сброса пароля
           </p>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          
+          {/* Debug информация */}
+          <div className="mt-6 p-3 bg-gray-100 rounded text-xs text-left">
+            <div><strong>URL:</strong> {window.location.href}</div>
+            <div><strong>Search:</strong> {window.location.search}</div>
+            <div><strong>Hash:</strong> {window.location.hash}</div>
+            <div><strong>Error:</strong> {searchParams.get('error') || 'None'}</div>
+            <div><strong>Code:</strong> {searchParams.get('code') ? 'Found' : 'Not found'}</div>
+            <div><strong>Access Token:</strong> {new URLSearchParams(window.location.hash.substring(1)).get('access_token') ? 'Found' : 'Not found'}</div>
+          </div>
         </div>
       </div>
     )
