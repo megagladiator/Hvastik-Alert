@@ -27,77 +27,40 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     console.group("ResetPasswordPage Load")
+    console.log("Full URL:", window.location.href)
 
-    // КРИТИЧЕСКИ ВАЖНО: Принудительно выходим из сессии в самом начале!
-    // Это предотвращает автоматическую авторизацию на странице сброса пароля
-    const forceSignOut = async () => {
-      console.log('🔒 FORCING SIGN OUT on reset password page to prevent auto-authentication...')
+    // ИСПРАВЛЕНО: Проверяем сессию вместо токенов в URL
+    const checkSession = async () => {
       try {
-        await supabase.auth.signOut()
-        console.log('✅ Forced sign out on reset password page completed')
+        console.log('🔍 Checking for active session...')
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('❌ Error getting session:', error)
+          setError('Ошибка при проверке сессии. Пожалуйста, перейдите по ссылке из email.')
+          setIsProcessing(false)
+          return
+        }
+
+        if (session) {
+          console.log('✅ Active session found:', session.user?.email)
+          setIsProcessing(false)
+          // Пользователь аутентифицирован, показываем форму сброса пароля
+        } else {
+          console.log('❌ No active session found')
+          setError('Код восстановления пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
+          setIsProcessing(false)
+        }
       } catch (error) {
-        console.error('❌ Error during forced sign out on reset password page:', error)
+        console.error('❌ Exception checking session:', error)
+        setError('Ошибка при проверке сессии. Пожалуйста, перейдите по ссылке из email.')
+        setIsProcessing(false)
       }
     }
-    
-    forceSignOut()
 
-    console.log("Full URL:", window.location.href)
-    console.log("Window location search:", window.location.search)
-    console.log("Window location hash:", window.location.hash)
-
-    // Проверяем все возможные параметры
-    const urlParams = new URLSearchParams(window.location.search)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    
-    console.log("All URL search params:", Object.fromEntries(urlParams.entries()))
-    console.log("All hash params:", Object.fromEntries(hashParams.entries()))
-
-    const code = searchParams.get('code') || urlParams.get('code')
-    const accessToken = hashParams.get('access_token')
-    const refreshToken = hashParams.get('refresh_token')
-    const token = urlParams.get('token')
-    const type = urlParams.get('type')
-    
-    console.log('Extracted params:', { code, accessToken: !!accessToken, refreshToken: !!refreshToken, token, type })
-
-    // Получаем code_verifier из localStorage
-    const codeVerifier = getCodeVerifier()
-    console.log('🔑 Code verifier from localStorage:', codeVerifier ? 'found' : 'not found')
-
-    // Если есть токены в hash, используем их
-    if (accessToken && refreshToken) {
-      console.log("Found tokens in hash, setting session...")
-      handleTokensFromHash(accessToken, refreshToken)
-      return
-    }
-
-    // Если есть token и type, пробуем verifyOtp (основной способ)
-    if (token && type) {
-      console.log("Found token and type, trying verifyOtp...")
-      handleTokenVerification(token, type)
-      return
-    }
-
-    // Если есть только token (без type), пробуем verifyPasswordResetToken
-    if (token && !type) {
-      console.log("Found token without type, trying verifyPasswordResetToken...")
-      handlePasswordResetToken(token)
-      return
-    }
-
-    // Если есть code, пробуем exchangeCodeForSession (может работать без code_verifier)
-    if (code) {
-      console.log("Found code, trying exchangeCodeForSession...")
-      handleCodeExchange(code)
-      return
-    }
-
-    console.error('Error: No valid auth params found')
-    setError('Код восстановления пароля отсутствует. Пожалуйста, перейдите по ссылке из email.')
-    setIsProcessing(false)
+    checkSession()
     console.groupEnd()
-  }, [searchParams])
+  }, [])
 
   // Обработка токенов из hash (implicit flow)
   async function handleTokensFromHash(accessToken: string, refreshToken: string) {
