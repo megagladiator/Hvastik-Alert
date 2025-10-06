@@ -28,28 +28,31 @@ export async function signOut() {
   return supabase.auth.signOut()
 }
 
-// Запрос ссылки на сброс пароля (стандартный подход Supabase)
+// Запрос ссылки на сброс пароля (принудительное указание URL)
 export async function requestPasswordReset(email: string) {
   console.log('🔍 Forgot password request for:', email)
   
   const supabase = createClient()
   
-  // Определяем базовый URL
-  const baseUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://hvostikalert.ru' 
-    : 'http://localhost:3000'
+  // ПРИНУДИТЕЛЬНО используем продакшн URL
+  const baseUrl = 'https://hvostikalert.ru'
   
-  console.log('🌐 Base URL for password reset:', baseUrl)
+  console.log('🌐 FORCED Base URL for password reset:', baseUrl)
   console.log('🌐 NODE_ENV:', process.env.NODE_ENV)
   
-  console.log('📧 Sending password reset email using resetPasswordForEmail...')
+  console.log('📧 Sending password reset email using signInWithOtp with FORCED URL...')
   
-  // Используем стандартный resetPasswordForEmail
-  const result = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${baseUrl}/auth/callback`
+  // Используем signInWithOtp с принудительным URL
+  const result = await supabase.auth.signInWithOtp({
+    email: email,
+    options: {
+      emailRedirectTo: `${baseUrl}/auth/callback`,
+      shouldCreateUser: false // Не создаем пользователя, только сброс пароля
+    }
   })
   
   console.log('📧 Password reset request result:', { email, error: result.error })
+  console.log('📧 Redirect URL used:', `${baseUrl}/auth/callback`)
   return result
 }
 

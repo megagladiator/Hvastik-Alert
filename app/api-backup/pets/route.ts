@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin, safeSupabaseAdmin } from '@/lib/supabase-admin'
 import { v5 as uuidv5 } from 'uuid'
 
+// Принудительно делаем route динамическим
+export const dynamic = 'force-dynamic'
+
 // Функция для генерации UUID из NextAuth.js ID
 const generateUserId = (nextAuthId: string | undefined): string | null => {
   if (!nextAuthId) return null
