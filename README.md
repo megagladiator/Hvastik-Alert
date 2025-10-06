@@ -167,7 +167,7 @@ Continue building your app on:
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
 
-## 🆕 Recent Updates (v1.2.74 - 28 января 2025)
+## 🆕 Recent Updates (v1.2.75 - 28 января 2025)
 
 ### 🚨 Критические исправления
 - ✅ **Полная реализация PKCE flow** - исправлен сброс пароля с правильной обработкой токенов
