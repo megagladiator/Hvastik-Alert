@@ -57,14 +57,7 @@ export default function ResetPasswordPage() {
       return
     }
 
-    // Если есть code, пробуем exchangeCodeForSession (может работать без code_verifier)
-    if (code) {
-      console.log("Found code, trying exchangeCodeForSession...")
-      handleCodeExchange(code)
-      return
-    }
-
-    // Если есть token и type, пробуем verifyOtp
+    // Если есть token и type, пробуем verifyOtp (основной способ)
     if (token && type) {
       console.log("Found token and type, trying verifyOtp...")
       handleTokenVerification(token, type)
@@ -75,6 +68,13 @@ export default function ResetPasswordPage() {
     if (token && !type) {
       console.log("Found token without type, trying verifyPasswordResetToken...")
       handlePasswordResetToken(token)
+      return
+    }
+
+    // Если есть code, пробуем exchangeCodeForSession (может работать без code_verifier)
+    if (code) {
+      console.log("Found code, trying exchangeCodeForSession...")
+      handleCodeExchange(code)
       return
     }
 

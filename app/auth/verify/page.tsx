@@ -1,96 +1,130 @@
 "use client"
 
-import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { verifyOtp, verifyPasswordResetToken } from "@/lib/auth"
 
 export default function VerifyPage() {
+  const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
+  const [error, setError] = useState<string>('')
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
-  const [message, setMessage] = useState('')
 
   useEffect(() => {
-    const mode = searchParams.get('mode')
-    const oobCode = searchParams.get('oobCode')
-
-    console.log('Verify Page:', { mode, oobCode })
-
-    if (mode === 'verifyEmail' && oobCode) {
-      handleVerifyEmail(oobCode)
-    } else {
+    console.log('Auth Verify Page - Processing token...')
+    console.log('Full URL:', window.location.href)
+    console.log('Search params:', window.location.search)
+    
+    const token = searchParams.get('token')
+    const type = searchParams.get('type')
+    const redirectTo = searchParams.get('redirect_to')
+    
+    console.log('Extracted params:', { token, type, redirectTo })
+    
+    if (!token) {
+      setError('Токен отсутствует в ссылке')
       setStatus('error')
-      setMessage('Неверная ссылка для подтверждения email.')
+      return
     }
-  }, [searchParams])
-
-  const handleVerifyEmail = async (oobCode: string) => {
-    try {
-      // Используем Supabase для подтверждения email
-      const response = await fetch('/api/auth/verify-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token: oobCode }),
-      })
-
-      const result = await response.json()
-
-      if (response.ok) {
-        setStatus('success')
-        setMessage('Ваш email успешно подтвержден! Теперь вы можете войти в систему.')
-        
-        // Перенаправляем на страницу входа через 3 секунды
-        setTimeout(() => {
-          router.push('/auth')
-        }, 3000)
-      } else {
-        setStatus('error')
-        setMessage(result.error || 'Ошибка подтверждения email.')
-      }
-
-    } catch (error: any) {
-      console.error('Error verifying email:', error)
+    
+    if (!type) {
+      setError('Тип токена отсутствует в ссылке')
       setStatus('error')
-      setMessage('Ошибка подтверждения email. Попробуйте позже.')
+      return
+    }
+    
+    // Обрабатываем токен
+    handleTokenVerification(token, type, redirectTo)
+  }, [searchParams, router])
+
+  const handleTokenVerification = async (token: string, type: string, redirectTo: string | null) => {
+    try {
+      console.log('Verifying token with type:', type)
+      
+      let result
+      if (type === 'recovery') {
+        result = await verifyPasswordResetToken(token)
+      } else {
+        result = await verifyOtp(token, type)
+      }
+      
+      if (result.error) {
+        console.error('Error verifying token:', result.error)
+        setError('Ошибка: ' + result.error.message)
+        setStatus('error')
+      } else {
+        console.log('Token verified successfully:', result.data)
+        setStatus('success')
+        
+        // Перенаправляем на страницу сброса пароля
+        if (redirectTo) {
+          console.log('Redirecting to:', redirectTo)
+          window.location.href = redirectTo
+        } else {
+          console.log('Redirecting to default reset password page')
+          router.push('/auth/reset-password')
+        }
+      }
+    } catch (err) {
+      console.error('Exception verifying token:', err)
+      setError('Произошла ошибка при обработке токена')
+      setStatus('error')
     }
   }
 
+  if (status === 'processing') {
+    return (
+      <div className="max-w-md w-full mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
+        <div className="text-center">
+          <div className="text-blue-600 text-4xl mb-4">⏳</div>
+          <h2 className="text-xl font-bold mb-4 text-blue-600">Обработка токена...</h2>
+          <p className="text-gray-600 mb-6">
+            Проверяем токен для сброса пароля
+          </p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="max-w-md w-full mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
+        <div className="text-center">
+          <div className="text-green-600 text-4xl mb-4">✅</div>
+          <h2 className="text-xl font-bold mb-4 text-green-600">Токен подтвержден!</h2>
+          <p className="text-gray-600 mb-6">
+            Перенаправляем на страницу сброса пароля...
+          </p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] bg-gray-50 p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 text-center">
-        {status === 'loading' && (
-          <div className="flex flex-col items-center">
-            <Loader2 className="h-10 w-10 animate-spin text-orange-500 mb-4" />
-            <h2 className="text-xl font-semibold text-gray-800">Подтверждение email...</h2>
-            <p className="text-gray-600 mt-2">Пожалуйста, подождите.</p>
-          </div>
-        )}
-
-        {status === 'success' && (
-          <div className="text-green-600">
-            <svg className="mx-auto h-12 w-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <h2 className="text-xl font-semibold text-gray-800 mt-4">Email подтвержден!</h2>
-            <p className="text-gray-600 mt-2">{message}</p>
-            <p className="text-sm text-gray-500 mt-2">Перенаправление на страницу входа...</p>
-            <Link href="/auth" className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
-              Перейти к входу
-            </Link>
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div className="text-red-600">
-            <svg className="mx-auto h-12 w-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <h2 className="text-xl font-semibold text-gray-800 mt-4">Ошибка подтверждения</h2>
-            <p className="text-gray-600 mt-2">{message}</p>
-            <Link href="/auth" className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              Повторить вход
-            </Link>
-          </div>
-        )}
+    <div className="max-w-md w-full mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
+      <div className="text-center">
+        <div className="text-red-600 text-4xl mb-4">⚠️</div>
+        <h2 className="text-xl font-bold mb-4 text-red-600">Ошибка обработки токена</h2>
+        <p className="text-gray-600 mb-6">{error}</p>
+        
+        <div className="space-y-3">
+          <Link 
+            href="/auth/forgot-password" 
+            className="block w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-center"
+          >
+            Запросить новую ссылку
+          </Link>
+          
+          <Link 
+            href="/auth" 
+            className="block w-full bg-gray-500 hover:bg-gray-600 text-white py-2 rounded text-center"
+          >
+            Вернуться к входу
+          </Link>
+        </div>
       </div>
     </div>
   )

@@ -36,7 +36,7 @@ export async function requestPasswordReset(email: string) {
   
   console.log('📧 Sending password reset email...')
   const result = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${baseUrl}/auth/reset-password`
+    redirectTo: `${baseUrl}/auth/verify`
   })
   
   console.log('📧 Password reset request result:', { email, error: result.error })
