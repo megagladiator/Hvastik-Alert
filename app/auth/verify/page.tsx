@@ -15,20 +15,24 @@ export default function VerifyPage() {
     console.log('Auth Verify Page - Processing token...')
     console.log('Full URL:', window.location.href)
     console.log('Search params:', window.location.search)
+    console.log('Hash:', window.location.hash)
     
-    const token = searchParams.get('token')
-    const type = searchParams.get('type')
-    const redirectTo = searchParams.get('redirect_to')
+    // Проверяем все возможные источники токена
+    const token = searchParams.get('token') || new URLSearchParams(window.location.hash.substring(1)).get('token')
+    const type = searchParams.get('type') || new URLSearchParams(window.location.hash.substring(1)).get('type')
+    const redirectTo = searchParams.get('redirect_to') || new URLSearchParams(window.location.hash.substring(1)).get('redirect_to')
     
     console.log('Extracted params:', { token, type, redirectTo })
     
     if (!token) {
+      console.error('No token found in URL or hash')
       setError('Токен отсутствует в ссылке')
       setStatus('error')
       return
     }
     
     if (!type) {
+      console.error('No type found in URL or hash')
       setError('Тип токена отсутствует в ссылке')
       setStatus('error')
       return
@@ -41,17 +45,27 @@ export default function VerifyPage() {
   const handleTokenVerification = async (token: string, type: string, redirectTo: string | null) => {
     try {
       console.log('Verifying token with type:', type)
+      console.log('Token length:', token.length)
+      console.log('Token preview:', token.substring(0, 20) + '...')
       
       let result
       if (type === 'recovery') {
+        console.log('Processing recovery token...')
         result = await verifyPasswordResetToken(token)
       } else {
+        console.log('Processing OTP token...')
         result = await verifyOtp(token, type)
       }
       
       if (result.error) {
         console.error('Error verifying token:', result.error)
-        setError('Ошибка: ' + result.error.message)
+        
+        // Проверяем специфические ошибки
+        if (result.error.message.includes('expired') || result.error.message.includes('invalid')) {
+          setError('Ссылка истекла или недействительна. Пожалуйста, запросите новую ссылку.')
+        } else {
+          setError('Ошибка: ' + result.error.message)
+        }
         setStatus('error')
       } else {
         console.log('Token verified successfully:', result.data)
@@ -63,13 +77,10 @@ export default function VerifyPage() {
         setStatus('success')
         
         // Перенаправляем на страницу сброса пароля БЕЗ авторизации
-        if (redirectTo && redirectTo.includes('/auth/reset-password')) {
-          console.log('Redirecting to reset password page')
+        console.log('Redirecting to reset password page...')
+        setTimeout(() => {
           router.push('/auth/reset-password')
-        } else {
-          console.log('Redirecting to default reset password page')
-          router.push('/auth/reset-password')
-        }
+        }, 2000) // Даем время показать сообщение об успехе
       }
     } catch (err) {
       console.error('Exception verifying token:', err)
@@ -88,6 +99,15 @@ export default function VerifyPage() {
             Проверяем токен для сброса пароля
           </p>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          
+          {/* Debug информация */}
+          <div className="mt-6 p-3 bg-gray-100 rounded text-xs text-left">
+            <div><strong>URL:</strong> {window.location.href}</div>
+            <div><strong>Search:</strong> {window.location.search}</div>
+            <div><strong>Hash:</strong> {window.location.hash}</div>
+            <div><strong>Token:</strong> {searchParams.get('token') ? 'Found' : 'Not found'}</div>
+            <div><strong>Type:</strong> {searchParams.get('type') || 'Not found'}</div>
+          </div>
         </div>
       </div>
     )
