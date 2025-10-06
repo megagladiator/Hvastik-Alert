@@ -26,8 +26,9 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    console.group("ResetPasswordPage Load")
+    console.group("ResetPasswordPage Load v1.2.127")
     console.log("Full URL:", window.location.href)
+    console.log("🔄 FORCING CACHE CLEAR - Version 1.2.127")
 
     // ИСПРАВЛЕНО: Проверяем сессию вместо токенов в URL
     const checkSession = async () => {
