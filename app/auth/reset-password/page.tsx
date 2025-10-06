@@ -3,7 +3,15 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { supabase } from "@/lib/supabase"
+import { 
+  exchangeCodeForSession, 
+  updatePassword, 
+  setSession, 
+  verifyOtp, 
+  getSessionFromUrl,
+  getCodeVerifier,
+  clearCodeVerifier
+} from "@/lib/auth"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -38,7 +46,7 @@ export default function ResetPasswordPage() {
     console.log('Extracted params:', { code, accessToken: !!accessToken, refreshToken: !!refreshToken, token, type })
 
     // Получаем code_verifier из localStorage
-    const codeVerifier = localStorage.getItem('pkce_code_verifier')
+    const codeVerifier = getCodeVerifier()
     console.log('🔑 Code verifier from localStorage:', codeVerifier ? 'found' : 'not found')
 
     // Если есть токены в hash, используем их
@@ -81,10 +89,7 @@ export default function ResetPasswordPage() {
   async function handleTokensFromHash(accessToken: string, refreshToken: string) {
     try {
       console.log("Setting session from hash tokens...")
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-      })
+      const { error } = await setSession(accessToken, refreshToken)
       
       if (error) {
         console.error("Error setting session from hash:", error)
@@ -105,26 +110,23 @@ export default function ResetPasswordPage() {
   async function handleCodeExchange(code: string, codeVerifier: string) {
     try {
       console.log("Trying exchangeCodeForSession with code_verifier...")
-      const { data, error } = await supabase.auth.exchangeCodeForSession({
-        code,
-        code_verifier: codeVerifier
-      })
+      const { data, error } = await exchangeCodeForSession(code)
       
       if (error) {
         console.error("Error from exchangeCodeForSession:", error)
         setError('Ошибка: ' + error.message)
         // Удаляем code_verifier при ошибке
-        localStorage.removeItem('pkce_code_verifier')
+        clearCodeVerifier()
       } else {
         console.log("exchangeCodeForSession successful", data)
         // Удаляем code_verifier после успешного использования
-        localStorage.removeItem('pkce_code_verifier')
+        clearCodeVerifier()
       }
     } catch (err) {
       console.error("Exception in handleCodeExchange:", err)
       setError('Произошла ошибка при обработке ссылки сброса пароля')
       // Удаляем code_verifier при ошибке
-      localStorage.removeItem('pkce_code_verifier')
+      clearCodeVerifier()
     } finally {
       setIsProcessing(false)
       console.groupEnd()
@@ -135,10 +137,7 @@ export default function ResetPasswordPage() {
   async function handleTokenVerification(token: string, type: string) {
     try {
       console.log("Trying verifyOtp with token and type...")
-      const { data, error } = await supabase.auth.verifyOtp({
-        token_hash: token,
-        type: type as any
-      })
+      const { data, error } = await verifyOtp(token, type)
       
       if (error) {
         console.error("Error from verifyOtp:", error)
@@ -172,19 +171,13 @@ export default function ResetPasswordPage() {
     setLoading(true)
 
     try {
-      console.log("Calling supabase.auth.updateUser with new password...")
-      const { error } = await supabase.auth.updateUser({ password })
-      if (error) {
-        console.error("Error from updateUser:", error)
-        setError(error.message)
-        setLoading(false)
-        return
-      }
+      console.log("Calling updatePassword with new password...")
+      await updatePassword(password)
       console.log("Password successfully updated")
       setSuccess(true)
-    } catch (err) {
+    } catch (err: any) {
       console.error("Exception in updating password:", err)
-      setError('Произошла ошибка при сбросе пароля')
+      setError('Произошла ошибка при сбросе пароля: ' + (err.message || 'Неизвестная ошибка'))
     } finally {
       setLoading(false)
     }

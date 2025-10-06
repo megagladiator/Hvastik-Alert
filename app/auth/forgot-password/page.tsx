@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { requestPasswordReset, clearCodeVerifier } from "@/lib/auth"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -26,55 +27,43 @@ export default function ForgotPasswordPage() {
     }
   }, [searchParams])
 
-  // Генерация code_verifier для PKCE flow
-  function generateCodeVerifier(length = 128) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'
-    let verifier = ''
-    for (let i = 0; i < length; i++) {
-      verifier += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    return verifier
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
     setLoading(true)
     
     try {
-      // Генерируем и сохраняем code_verifier для PKCE flow
-      const codeVerifier = generateCodeVerifier()
-      localStorage.setItem('pkce_code_verifier', codeVerifier)
+      console.log('🔑 Requesting password reset for:', email)
       
-      console.log('🔑 Generated code_verifier:', codeVerifier.substring(0, 20) + '...')
-      console.log('💾 Saved to localStorage')
-
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          email,
-          codeVerifier // Передаем code_verifier в API
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || 'Произошла ошибка')
+      // Используем централизованную функцию из lib/auth.ts
+      const { error } = await requestPasswordReset(email)
+      
+      if (error) {
+        console.error('❌ Error requesting password reset:', error)
+        
+        if (error.message.includes('User not found') || error.message.includes('not found')) {
+          setError('Пользователь с таким email не зарегистрирован. Пожалуйста, пройдите регистрацию для доступа к личному кабинету сайта.')
+        } else if (error.message.includes('Invalid email')) {
+          setError('Неверный формат email')
+        } else if (error.message.includes('Too many requests') || error.message.includes('rate limit')) {
+          setError('Слишком много запросов. Попробуйте позже')
+        } else {
+          setError('Произошла ошибка при отправке письма для сброса пароля: ' + error.message)
+        }
+        
         // Удаляем code_verifier при ошибке
-        localStorage.removeItem('pkce_code_verifier')
+        clearCodeVerifier()
         return
       }
 
+      console.log('✅ Password reset email sent successfully')
       setSuccess(true)
       
     } catch (error: any) {
+      console.error('❌ Exception in handleSubmit:', error)
       setError('Произошла ошибка при отправке запроса')
       // Удаляем code_verifier при ошибке
-      localStorage.removeItem('pkce_code_verifier')
+      clearCodeVerifier()
     }
     
     setLoading(false)
