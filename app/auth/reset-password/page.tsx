@@ -57,19 +57,10 @@ export default function ResetPasswordPage() {
       return
     }
 
-    // Если есть code и code_verifier, пробуем exchangeCodeForSession
-    if (code && codeVerifier) {
-      console.log("Found code and code_verifier, trying exchangeCodeForSession...")
-      handleCodeExchange(code, codeVerifier)
-      return
-    }
-
-    // Если есть code но нет code_verifier
-    if (code && !codeVerifier) {
-      console.error('Code found but no code_verifier in localStorage')
-      setError('Код восстановления найден, но отсутствует code_verifier. Пожалуйста, запросите новую ссылку.')
-      setIsProcessing(false)
-      console.groupEnd()
+    // Если есть code, пробуем exchangeCodeForSession (может работать без code_verifier)
+    if (code) {
+      console.log("Found code, trying exchangeCodeForSession...")
+      handleCodeExchange(code)
       return
     }
 
@@ -114,27 +105,21 @@ export default function ResetPasswordPage() {
     }
   }
 
-  // Обработка code exchange (PKCE flow)
-  async function handleCodeExchange(code: string, codeVerifier: string) {
+  // Обработка code exchange
+  async function handleCodeExchange(code: string) {
     try {
-      console.log("Trying exchangeCodeForSession with code_verifier...")
+      console.log("Trying exchangeCodeForSession...")
       const { data, error } = await exchangeCodeForSession(code)
       
       if (error) {
         console.error("Error from exchangeCodeForSession:", error)
         setError('Ошибка: ' + error.message)
-        // Удаляем code_verifier при ошибке
-        clearCodeVerifier()
       } else {
         console.log("exchangeCodeForSession successful", data)
-        // Удаляем code_verifier после успешного использования
-        clearCodeVerifier()
       }
     } catch (err) {
       console.error("Exception in handleCodeExchange:", err)
       setError('Произошла ошибка при обработке ссылки сброса пароля')
-      // Удаляем code_verifier при ошибке
-      clearCodeVerifier()
     } finally {
       setIsProcessing(false)
       console.groupEnd()

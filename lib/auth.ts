@@ -25,17 +25,9 @@ export async function signOut() {
   return supabase.auth.signOut()
 }
 
-// Запрос ссылки на сброс пароля (с сохранением code_verifier)
+// Запрос ссылки на сброс пароля (без PKCE для совместимости)
 export async function requestPasswordReset(email: string) {
   console.log('🔍 Forgot password request for:', email)
-  
-  const codeVerifier = generateCodeVerifier()
-  console.log('🔑 Generated code_verifier:', codeVerifier.substring(0, 10) + '...')
-  
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('pkce_code_verifier', codeVerifier)
-    console.log('💾 Saved to localStorage')
-  }
   
   // Определяем базовый URL
   const baseUrl = process.env.NODE_ENV === 'production' 
@@ -44,8 +36,7 @@ export async function requestPasswordReset(email: string) {
   
   console.log('📧 Sending password reset email...')
   const result = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${baseUrl}/auth/reset-password`,
-    codeVerifier
+    redirectTo: `${baseUrl}/auth/reset-password`
   })
   
   console.log('📧 Password reset request result:', { email, error: result.error })
@@ -54,15 +45,23 @@ export async function requestPasswordReset(email: string) {
 
 // Обмен кода из URL сброса на сессию
 export async function exchangeCodeForSession(code: string) {
-  const codeVerifier = typeof window !== 'undefined' ? localStorage.getItem('pkce_code_verifier') : null
-  console.log('🔑 Code verifier from localStorage:', codeVerifier ? 'found' : 'not found')
+  console.log('Trying exchangeCodeForSession...')
   
-  if (!codeVerifier) {
-    throw new Error('Code verifier missing, please request password reset again.')
+  // Пробуем сначала без code_verifier (для совместимости)
+  let result = await supabase.auth.exchangeCodeForSession({ code })
+  
+  if (result.error) {
+    console.log('❌ Error without code_verifier:', result.error.message)
+    
+    // Если не получилось, пробуем с code_verifier из localStorage
+    const codeVerifier = typeof window !== 'undefined' ? localStorage.getItem('pkce_code_verifier') : null
+    console.log('🔑 Code verifier from localStorage:', codeVerifier ? 'found' : 'not found')
+    
+    if (codeVerifier) {
+      console.log('Trying with code_verifier...')
+      result = await supabase.auth.exchangeCodeForSession({ code, code_verifier: codeVerifier })
+    }
   }
-  
-  console.log('Trying exchangeCodeForSession with code_verifier...')
-  const result = await supabase.auth.exchangeCodeForSession({ code, code_verifier: codeVerifier })
   
   if (result.error) {
     console.error('❌ Error from exchangeCodeForSession:', result.error)
