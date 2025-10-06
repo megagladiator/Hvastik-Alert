@@ -13,7 +13,7 @@ import {
   getCodeVerifier,
   clearCodeVerifier
 } from "@/lib/auth"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase/client"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -24,11 +24,25 @@ export default function ResetPasswordPage() {
   const [isProcessing, setIsProcessing] = useState(true)
   const router = useRouter()
   const searchParams = useSearchParams()
+  
+  // ИСПРАВЛЕНО: Создаем правильный клиентский клиент
+  const supabase = createClient()
 
   useEffect(() => {
-    console.group("ResetPasswordPage Load v1.2.127")
+    console.group("ResetPasswordPage Load v1.2.129")
     console.log("Full URL:", window.location.href)
-    console.log("🔄 FORCING CACHE CLEAR - Version 1.2.127")
+    console.log("🔄 FORCING CACHE CLEAR - Version 1.2.129")
+    console.log("🚨 CRITICAL: This should show NEW session check logic!")
+    
+    // Принудительная очистка кэша
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => {
+          caches.delete(name)
+        })
+        console.log('🗑️ All caches cleared')
+      })
+    }
 
     // ИСПРАВЛЕНО: Проверяем сессию вместо токенов в URL
     const checkSession = async () => {
