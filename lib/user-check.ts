@@ -10,7 +10,7 @@ export async function checkUserExists(email: string): Promise<boolean> {
     // Используем метод resetPasswordForEmail - он не отправляет email если пользователь не существует
     // но возвращает ошибку если пользователь не найден
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'http://localhost:3000/auth/reset-password'
+      redirectTo: 'https://hvostikalert.ru/auth/reset-password'
     })
 
     // Если ошибка содержит "User not found" - пользователь не существует
