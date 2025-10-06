@@ -25,7 +25,7 @@ export async function signOut() {
   return supabase.auth.signOut()
 }
 
-// Запрос ссылки на сброс пароля (используем OTP вместо PKCE)
+// Запрос ссылки на сброс пароля (используем signInWithOtp для обхода PKCE)
 export async function requestPasswordReset(email: string) {
   console.log('🔍 Forgot password request for:', email)
   
@@ -34,30 +34,35 @@ export async function requestPasswordReset(email: string) {
     ? 'https://hvostikalert.ru' 
     : 'http://localhost:3000'
   
-  console.log('📧 Sending password reset email with OTP flow...')
+  console.log('📧 Sending password reset email using signInWithOtp...')
   
-  // Используем OTP flow вместо PKCE для лучшей совместимости
-  const result = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${baseUrl}/auth/callback`,
-    // Отключаем PKCE flow
-    captchaToken: undefined
+  // Используем signInWithOtp вместо resetPasswordForEmail для обхода PKCE проблем
+  const result = await supabase.auth.signInWithOtp({
+    email: email,
+    options: {
+      emailRedirectTo: `${baseUrl}/auth/callback`,
+      shouldCreateUser: false // Не создаем пользователя, только сброс пароля
+    }
   })
   
   console.log('📧 Password reset request result:', { email, error: result.error })
   return result
 }
 
-// Обмен кода из URL сброса на сессию (упрощенная версия без PKCE)
+// Обмен кода из URL сброса на сессию (используем verifyOtp для OTP flow)
 export async function exchangeCodeForSession(code: string) {
   console.log('Trying exchangeCodeForSession with OTP flow...')
   
-  // Используем простой OTP flow без PKCE
-  const result = await supabase.auth.exchangeCodeForSession({ code })
+  // Для OTP flow используем verifyOtp вместо exchangeCodeForSession
+  const result = await supabase.auth.verifyOtp({
+    token: code,
+    type: 'email'
+  })
   
   if (result.error) {
-    console.error('❌ Error from exchangeCodeForSession:', result.error)
+    console.error('❌ Error from verifyOtp:', result.error)
   } else {
-    console.log('✅ exchangeCodeForSession successful')
+    console.log('✅ verifyOtp successful')
   }
   
   return result
