@@ -23,7 +23,7 @@ echo "🚀 Updating version before commit..."
 node scripts/update-version.js
 
 # Добавляем обновленные файлы в коммит
-git add version.json README.md
+git add version.json package.json README.md
 
 echo "✅ Version updated and files staged"
 `;

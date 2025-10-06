@@ -6,10 +6,12 @@ const path = require('path');
 // Функция для обновления версии
 function updateVersion() {
   const versionFile = path.join(__dirname, '..', 'version.json');
+  const packageFile = path.join(__dirname, '..', 'package.json');
   
   try {
     // Читаем текущую версию
     const versionData = JSON.parse(fs.readFileSync(versionFile, 'utf8'));
+    const packageData = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
     
     // Парсим версию (например, "1.2.75" -> [1, 2, 75])
     const versionParts = versionData.version.split('.').map(Number);
@@ -20,17 +22,22 @@ function updateVersion() {
     // Формируем новую версию
     const newVersion = versionParts.join('.');
     
-    // Обновляем данные
+    // Обновляем данные в version.json
     versionData.version = newVersion;
     versionData.buildDate = new Date().toISOString().split('T')[0];
     versionData.buildTime = new Date().toTimeString().split(' ')[0];
     
+    // Обновляем версию в package.json
+    packageData.version = newVersion;
+    
     // Записываем обратно
     fs.writeFileSync(versionFile, JSON.stringify(versionData, null, 2));
+    fs.writeFileSync(packageFile, JSON.stringify(packageData, null, 2));
     
     console.log(`✅ Version updated to ${newVersion}`);
     console.log(`📅 Build date: ${versionData.buildDate}`);
     console.log(`⏰ Build time: ${versionData.buildTime}`);
+    console.log(`📦 package.json synchronized`);
     
     return newVersion;
   } catch (error) {
