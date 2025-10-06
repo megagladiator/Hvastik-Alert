@@ -4,6 +4,9 @@ import { NextResponse } from 'next/server'
 // Принудительно делаем route динамическим
 export const dynamic = 'force-dynamic'
 
+// КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Жестко закодированный продакшн URL
+const PRODUCTION_URL = 'https://hvostikalert.ru'
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
@@ -24,18 +27,18 @@ export async function GET(request: Request) {
       
       if (error) {
         console.error('❌ Error exchanging code for session:', error)
-        return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent(error.message), requestUrl.origin))
+        return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent(error.message), PRODUCTION_URL))
       }
       
       console.log('✅ Code exchanged for session successfully')
       console.log('User:', data.user?.email)
       
-      // ИСПРАВЛЕНО: Перенаправляем на страницу сброса пароля с правильным URL
-      return NextResponse.redirect(new URL('/auth/reset-password', requestUrl.origin))
+      // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем жестко закодированный продакшн URL
+      return NextResponse.redirect(new URL('/auth/reset-password', PRODUCTION_URL))
       
     } catch (err) {
       console.error('❌ Exception in callback route:', err)
-      return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent('Произошла ошибка при обработке ссылки'), requestUrl.origin))
+      return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent('Произошла ошибка при обработке ссылки'), PRODUCTION_URL))
     }
   }
 
@@ -52,22 +55,22 @@ export async function GET(request: Request) {
       
       if (error) {
         console.error('❌ Error verifying token:', error)
-        return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent(error.message), requestUrl.origin))
+        return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent(error.message), PRODUCTION_URL))
       }
       
       console.log('✅ Token verified successfully')
       console.log('User:', data.user?.email)
       console.log('Token type:', type)
       
-      // ИСПРАВЛЕНО: Перенаправляем на страницу сброса пароля с правильным URL
-      return NextResponse.redirect(new URL('/auth/reset-password', requestUrl.origin))
+      // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем жестко закодированный продакшн URL
+      return NextResponse.redirect(new URL('/auth/reset-password', PRODUCTION_URL))
       
     } catch (err) {
       console.error('❌ Exception verifying token:', err)
-      return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent('Произошла ошибка при обработке ссылки'), requestUrl.origin))
+      return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent('Произошла ошибка при обработке ссылки'), PRODUCTION_URL))
     }
   }
 
   console.error('❌ No valid parameters found in callback URL')
-  return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent('Неверная ссылка для сброса пароля'), requestUrl.origin))
+  return NextResponse.redirect(new URL('/auth/error?message=' + encodeURIComponent('Неверная ссылка для сброса пароля'), PRODUCTION_URL))
 }
