@@ -69,3 +69,4 @@ ${petData.reward ? `• Вознаграждение: ${petData.reward} ₽` : '
 
 
 
+
