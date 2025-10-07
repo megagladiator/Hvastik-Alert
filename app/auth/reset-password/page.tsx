@@ -268,11 +268,26 @@ export default function ResetPasswordPage() {
   }
 
   if (error) {
+    // Определяем заголовок в зависимости от типа ошибки
+    const getErrorTitle = () => {
+      if (error.includes('тот же пароль')) {
+        return 'Ошибка пароля'
+      } else if (error.includes('слишком короткий')) {
+        return 'Слишком короткий пароль'
+      } else if (error.includes('истекла')) {
+        return 'Ссылка истекла'
+      } else if (error.includes('не найден')) {
+        return 'Пользователь не найден'
+      } else {
+        return 'Ошибка сброса пароля'
+      }
+    }
+
     return (
       <div className="max-w-md w-full mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
         <div className="text-center">
           <div className="text-red-600 text-4xl mb-4">⚠</div>
-          <h2 className="text-xl font-bold mb-4 text-red-600">Неверная ссылка</h2>
+          <h2 className="text-xl font-bold mb-4 text-red-600">{getErrorTitle()}</h2>
           <p className="text-gray-600 mb-6">{error}</p>
           <div className="space-y-2">
             <Link href="/auth/forgot-password" className="block w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-center">
