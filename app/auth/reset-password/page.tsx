@@ -59,6 +59,23 @@ export default function ResetPasswordPage() {
 
         if (session) {
           console.log('✅ Active session found:', session.user?.email)
+          console.log('🔍 Session details:', {
+            user_id: session.user?.id,
+            email: session.user?.email,
+            expires_at: session.expires_at,
+            token_type: session.token_type,
+            access_token: session.access_token ? 'Present' : 'Missing'
+          })
+          
+          // Проверяем, не истекла ли сессия
+          const now = Math.floor(Date.now() / 1000)
+          if (session.expires_at && session.expires_at < now) {
+            console.log('❌ Session expired!')
+            setError('Сессия истекла. Пожалуйста, запросите новую ссылку.')
+            setIsProcessing(false)
+            return
+          }
+          
           setIsProcessing(false)
           // Пользователь аутентифицирован, показываем форму сброса пароля
         } else {
@@ -179,12 +196,15 @@ export default function ResetPasswordPage() {
 
     try {
       console.log("Calling updatePassword with new password...")
+      console.log("🔍 Password length:", password.length)
+      console.log("🔍 Password preview:", password.substring(0, 2) + "***")
+      
+      // Проверяем сессию перед обновлением пароля
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      console.log("🔍 Current session before update:", currentSession ? 'Present' : 'Missing')
+      
       await updatePassword(password)
       console.log("Password successfully updated")
-      
-      // ВАЖНО: Принудительно выходим из сессии после сброса пароля
-      console.log("🔒 Forcing sign out after password reset for security")
-      await supabase.auth.signOut()
       
       setSuccess(true)
     } catch (err: any) {

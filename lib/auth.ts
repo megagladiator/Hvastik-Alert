@@ -75,13 +75,7 @@ export async function updatePassword(newPassword: string) {
   console.log('🔑 Updating password...')
   const supabase = createClient()
   
-  // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Принудительно выходим из сессии перед обновлением пароля
-  console.log('🔒 Forcing sign out before password update...')
-  await supabase.auth.signOut()
-  
-  // Небольшая задержка для завершения выхода
-  await new Promise(resolve => setTimeout(resolve, 100))
-  
+  // ИСПРАВЛЕНО: Обновляем пароль БЕЗ выхода из сессии
   const { error } = await supabase.auth.updateUser({ password: newPassword })
   
   if (error) {
@@ -90,6 +84,10 @@ export async function updatePassword(newPassword: string) {
   }
   
   console.log('✅ Password successfully updated')
+  
+  // ВАЖНО: Выходим из сессии ПОСЛЕ успешного обновления пароля
+  console.log('🔒 Signing out after successful password update...')
+  await supabase.auth.signOut()
   
   if (typeof window !== 'undefined') {
     localStorage.removeItem('pkce_code_verifier')
