@@ -1,44 +1,152 @@
-import '@testing-library/jest-dom'
+/**
+ * JEST SETUP CONFIGURATION
+ * 
+ * Настройка Jest для тестирования системы сброса пароля
+ */
 
-// Mock fetch globally
+// Мокаем Next.js router
+jest.mock('next/router', () => ({
+  useRouter() {
+    return {
+      route: '/',
+      pathname: '/',
+      query: {},
+      asPath: '/',
+      push: jest.fn(),
+      pop: jest.fn(),
+      reload: jest.fn(),
+      back: jest.fn(),
+      prefetch: jest.fn().mockResolvedValue(undefined),
+      beforePopState: jest.fn(),
+      events: {
+        on: jest.fn(),
+        off: jest.fn(),
+        emit: jest.fn(),
+      },
+      isFallback: false,
+    }
+  },
+}))
+
+// Мокаем Next.js navigation
+jest.mock('next/navigation', () => ({
+  useRouter() {
+    return {
+      push: jest.fn(),
+      replace: jest.fn(),
+      prefetch: jest.fn(),
+      back: jest.fn(),
+      forward: jest.fn(),
+      refresh: jest.fn(),
+    }
+  },
+  useSearchParams() {
+    return new URLSearchParams()
+  },
+  usePathname() {
+    return '/'
+  },
+}))
+
+// Мокаем Supabase клиент
+jest.mock('@/lib/supabase/client', () => ({
+  createClient: jest.fn(() => ({
+    auth: {
+      resetPasswordForEmail: jest.fn(),
+      exchangeCodeForSession: jest.fn(),
+      updateUser: jest.fn(),
+      signOut: jest.fn(),
+      getSession: jest.fn(),
+      signInWithPassword: jest.fn(),
+      verifyOtp: jest.fn(),
+    },
+  })),
+}))
+
+// Мокаем Supabase серверный клиент
+jest.mock('@/lib/supabase/server', () => ({
+  createClient: jest.fn(() => ({
+    auth: {
+      resetPasswordForEmail: jest.fn(),
+      exchangeCodeForSession: jest.fn(),
+      updateUser: jest.fn(),
+      signOut: jest.fn(),
+      getSession: jest.fn(),
+      signInWithPassword: jest.fn(),
+      verifyOtp: jest.fn(),
+    },
+  })),
+}))
+
+// Мокаем fetch для API тестов
 global.fetch = jest.fn()
 
-// Mock Request and Response
-global.Request = jest.fn().mockImplementation((url, options) => ({
-  url,
-  ...options,
-  json: jest.fn(),
-  text: jest.fn(),
-}))
+// Мокаем localStorage
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+}
+global.localStorage = localStorageMock
 
-global.Response = jest.fn().mockImplementation((body, options) => ({
-  ok: true,
-  status: 200,
-  json: jest.fn(() => Promise.resolve(body)),
-  text: jest.fn(() => Promise.resolve(body)),
-  ...options,
-}))
+// Мокаем sessionStorage
+const sessionStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+}
+global.sessionStorage = sessionStorageMock
 
-// Mock window.performance
-Object.defineProperty(window, 'performance', {
-  value: {
-    now: jest.fn(() => Date.now()),
-    memory: {
-      usedJSHeapSize: 1000000,
-    },
-  },
-  writable: true,
-})
-
-// Mock console methods to reduce noise in tests
-global.console = {
-  ...console,
-  log: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
+// Мокаем window.location
+delete window.location
+window.location = {
+  href: 'http://localhost:3000',
+  origin: 'http://localhost:3000',
+  pathname: '/',
+  search: '',
+  hash: '',
+  assign: jest.fn(),
+  replace: jest.fn(),
+  reload: jest.fn(),
 }
 
-// Mock environment variables
-process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
-process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key'
+// Мокаем window.history
+window.history = {
+  pushState: jest.fn(),
+  replaceState: jest.fn(),
+  go: jest.fn(),
+  back: jest.fn(),
+  forward: jest.fn(),
+}
+
+// Настройка таймаутов для тестов
+jest.setTimeout(30000)
+
+// Очистка моков после каждого теста
+afterEach(() => {
+  jest.clearAllMocks()
+  localStorageMock.clear()
+  sessionStorageMock.clear()
+})
+
+// Глобальные переменные для тестов
+global.TEST_EMAIL = 'test@example.com'
+global.TEST_PASSWORD = 'TestPassword123!'
+global.NEW_PASSWORD = 'NewTestPassword456!'
+
+// Мокаем console для тестов
+const originalConsole = console
+global.console = {
+  ...originalConsole,
+  log: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+}
+
+// Восстанавливаем console в конце
+afterAll(() => {
+  global.console = originalConsole
+})
