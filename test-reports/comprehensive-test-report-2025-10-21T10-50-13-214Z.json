@@ -1,0 +1,40 @@
+{
+  "timestamp": "2025-10-21T10:50:13.214Z",
+  "summary": {
+    "total": 5,
+    "passed": 0,
+    "failed": 5
+  },
+  "results": [
+    {
+      "name": "Unit тесты",
+      "success": false,
+      "error": "Command failed: npm test -- --testPathPattern=\"__tests__/simple\" --verbose"
+    },
+    {
+      "name": "Integration тесты",
+      "success": false,
+      "error": "Command failed: npm test -- --testPathPattern=\"__tests__/integration\" --verbose"
+    },
+    {
+      "name": "Performance тесты",
+      "success": false,
+      "error": "Command failed: npm test -- --testPathPattern=\"__tests__/performance\" --verbose"
+    },
+    {
+      "name": "E2E тесты",
+      "success": false,
+      "error": "Command failed: npx playwright test __tests__/e2e/password-reset-e2e.test.ts"
+    },
+    {
+      "name": "API тесты",
+      "success": false,
+      "error": "Command failed: npm test -- --testPathPattern=\"__tests__/api\" --verbose"
+    }
+  ],
+  "environment": {
+    "node": "v22.20.0",
+    "platform": "win32",
+    "arch": "x64"
+  }
+}

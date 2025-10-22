@@ -52,13 +52,13 @@ jest.mock('next/navigation', () => ({
 jest.mock('@/lib/supabase/client', () => ({
   createClient: jest.fn(() => ({
     auth: {
-      resetPasswordForEmail: jest.fn(),
-      exchangeCodeForSession: jest.fn(),
-      updateUser: jest.fn(),
-      signOut: jest.fn(),
-      getSession: jest.fn(),
-      signInWithPassword: jest.fn(),
-      verifyOtp: jest.fn(),
+      resetPasswordForEmail: jest.fn().mockResolvedValue({ data: {}, error: null }),
+      exchangeCodeForSession: jest.fn().mockResolvedValue({ data: {}, error: null }),
+      updateUser: jest.fn().mockResolvedValue({ data: { user: {} }, error: null }),
+      signOut: jest.fn().mockResolvedValue({ error: null }),
+      getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
+      signInWithPassword: jest.fn().mockResolvedValue({ data: {}, error: null }),
+      verifyOtp: jest.fn().mockResolvedValue({ data: {}, error: null }),
     },
   })),
 }))
@@ -67,13 +67,13 @@ jest.mock('@/lib/supabase/client', () => ({
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(() => ({
     auth: {
-      resetPasswordForEmail: jest.fn(),
-      exchangeCodeForSession: jest.fn(),
-      updateUser: jest.fn(),
-      signOut: jest.fn(),
-      getSession: jest.fn(),
-      signInWithPassword: jest.fn(),
-      verifyOtp: jest.fn(),
+      resetPasswordForEmail: jest.fn().mockResolvedValue({ data: {}, error: null }),
+      exchangeCodeForSession: jest.fn().mockResolvedValue({ data: {}, error: null }),
+      updateUser: jest.fn().mockResolvedValue({ data: { user: {} }, error: null }),
+      signOut: jest.fn().mockResolvedValue({ error: null }),
+      getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
+      signInWithPassword: jest.fn().mockResolvedValue({ data: {}, error: null }),
+      verifyOtp: jest.fn().mockResolvedValue({ data: {}, error: null }),
     },
   })),
 }))
